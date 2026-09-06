@@ -2,16 +2,55 @@
 
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, X, ArrowUpRight } from 'lucide-react';
+import {
+  UploadCloud,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  ArrowUpRight,
+  Video,
+  Music,
+  FileImage,
+} from 'lucide-react';
 
 interface FileUploadProps {
   onUploadSuccess: () => void;
 }
 
-const ACCEPTED_EXTENSIONS = ['.txt', '.html', '.htm', '.pdf', '.csv', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
+const DOC_EXTENSIONS = [
+  '.txt',
+  '.html',
+  '.htm',
+  '.pdf',
+  '.csv',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.gif',
+  '.svg',
+];
+
+const MEDIA_EXTENSIONS = [
+  '.mp4',
+  '.webm',
+  '.mov',
+  '.mkv',
+  '.avi',
+  '.m4v',
+  '.mp3',
+  '.wav',
+  '.ogg',
+  '.m4a',
+  '.aac',
+  '.flac',
+];
 
 export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
-  const { fetchWithAuth } = useAuth();
+  const { user, fetchWithAuth } = useAuth();
+  const isMediaAccount = user?.username?.toLowerCase() === 'video';
+
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -26,17 +65,38 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
     setSuccess(null);
 
     const fileName = file.name.toLowerCase();
-    const isAccepted = ACCEPTED_EXTENSIONS.some((ext) => fileName.endsWith(ext)) || file.type.startsWith('image/');
+    const isMediaFile =
+      MEDIA_EXTENSIONS.some((ext) => fileName.endsWith(ext)) ||
+      file.type.startsWith('video/') ||
+      file.type.startsWith('audio/');
 
-    if (!isAccepted) {
-      setError('Invalid file type. Supported formats: .txt, .html, .pdf, .csv, and images.');
+    // Check if account is authorized for media
+    if (isMediaFile && !isMediaAccount) {
+      setError(
+        'Audio and video uploads are restricted to the dedicated media account ("video"). Please log in with username "video" (password: video@123) to upload audio and video.'
+      );
       setSelectedFile(null);
       return;
     }
 
-    // 25MB max size limit for comfort
-    if (file.size > 25 * 1024 * 1024) {
-      setError('File size exceeds the 25MB limit.');
+    const isDocFile =
+      DOC_EXTENSIONS.some((ext) => fileName.endsWith(ext)) ||
+      file.type.startsWith('image/');
+
+    if (!isDocFile && !isMediaFile) {
+      setError(
+        isMediaAccount
+          ? 'Invalid file type. Supported formats: Documents (PDF, TXT, HTML, CSV), Images, Video, and Audio.'
+          : 'Invalid file type. Supported formats: PDF, TXT, HTML, CSV, and Images.'
+      );
+      setSelectedFile(null);
+      return;
+    }
+
+    // Size limit: 100MB for media on video account, 25MB for regular documents
+    const maxSize = isMediaAccount ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError(`File size exceeds the ${isMediaAccount ? '100MB' : '25MB'} limit.`);
       setSelectedFile(null);
       return;
     }
@@ -116,9 +176,20 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
     <div className="max-w-2xl mx-auto">
       <div className="bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-2xl p-4 sm:p-8 shadow-xl">
         <div className="mb-5 sm:mb-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-white">Upload New Document</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-semibold text-white">
+              {isMediaAccount ? 'Upload File (Media Account)' : 'Upload New Document'}
+            </h2>
+            {isMediaAccount && (
+              <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[10px] font-bold uppercase tracking-wider">
+                Video & Audio Active
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Store documents securely on Cloudinary CDN. Supports PDF, TXT, CSV, HTML, and Images.
+            {isMediaAccount
+              ? 'Store documents, images, audio, and video securely on Cloudinary CDN.'
+              : 'Store documents and images securely on Cloudinary CDN. (Audio & Video upload is exclusive to the @video account)'}
           </p>
         </div>
 
@@ -138,7 +209,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
               />
               <div>
                 <p className="font-semibold mb-0.5">
-                  {isDuplicate ? 'Duplicate Document Detected' : 'Upload Failed'}
+                  {isDuplicate ? 'Duplicate File Detected' : 'Upload Failed'}
                 </p>
                 <p className="text-xs opacity-90">{error}</p>
               </div>
@@ -167,7 +238,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
               onClick={onUploadSuccess}
               className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors shrink-0"
             >
-              Go to View/Read <ArrowUpRight className="w-3.5 h-3.5" />
+              Go to View/Play <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
@@ -188,7 +259,11 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept=".txt,.html,.htm,.pdf,.csv,image/*"
+            accept={
+              isMediaAccount
+                ? '.txt,.html,.htm,.pdf,.csv,image/*,video/*,audio/*'
+                : '.txt,.html,.htm,.pdf,.csv,image/*'
+            }
             className="hidden"
           />
 
@@ -197,10 +272,12 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
               <UploadCloud className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
             <p className="text-sm sm:text-base font-medium text-slate-200 mb-1">
-              Drag & drop your document here, or <span className="text-indigo-400 underline">browse</span>
+              Drag & drop your file here, or <span className="text-indigo-400 underline">browse</span>
             </p>
             <p className="text-[11px] sm:text-xs text-slate-500 max-w-sm">
-              Supports .pdf, .txt, .csv, .html, .jpg, .png, .webp (up to 25MB)
+              {isMediaAccount
+                ? 'Supports Documents, Images, Audio, and Video (up to 100MB)'
+                : 'Supports .pdf, .txt, .csv, .html, and images (up to 25MB). Video & Audio on @video account.'}
             </p>
           </div>
         </div>
@@ -209,8 +286,16 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
         {selectedFile && (
           <div className="mt-4 sm:mt-5 p-3.5 sm:p-4 bg-slate-950/70 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3 overflow-hidden min-w-0">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-slate-800 flex items-center justify-center text-indigo-400 shrink-0">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+                {selectedFile.type.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv|m4v)$/i.test(selectedFile.name) ? (
+                  <Video className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
+                ) : selectedFile.type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(selectedFile.name) ? (
+                  <Music className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                ) : selectedFile.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(selectedFile.name) ? (
+                  <FileImage className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                ) : (
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-white truncate">{selectedFile.name}</p>

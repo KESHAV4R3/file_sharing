@@ -17,6 +17,15 @@ import {
   FileSpreadsheet,
   FileImage,
   File as FileIcon,
+  Video,
+  Music,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  FastForward,
+  Rewind,
+  Repeat,
   HardDrive,
   Trash2,
   AlertTriangle,
@@ -28,7 +37,7 @@ import { useAuth } from '@/context/AuthContext';
 export interface DocFile {
   id: string;
   originalName: string;
-  fileType: 'txt' | 'html' | 'pdf' | 'image' | 'csv';
+  fileType: 'txt' | 'html' | 'pdf' | 'image' | 'csv' | 'video' | 'audio';
   fileSize?: number;
   cloudinaryUrl: string;
   uploadedAt: string;
@@ -48,6 +57,429 @@ export function formatFileSize(bytes?: number | null): string {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   }
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function VideoPlayerView({
+  url,
+  title,
+  theme,
+}: {
+  url: string;
+  title: string;
+  theme: 'dark' | 'light';
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isLooping, setIsLooping] = useState(false);
+
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackRate(speed);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = speed;
+    }
+  };
+
+  const toggleLoop = () => {
+    if (videoRef.current) {
+      videoRef.current.loop = !isLooping;
+      setIsLooping(!isLooping);
+    }
+  };
+
+  const togglePiP = async () => {
+    if (!videoRef.current) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        await videoRef.current.requestPictureInPicture();
+      }
+    } catch (err) {
+      console.warn('PiP not supported or failed:', err);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-full p-3 sm:p-6 md:p-8 max-w-5xl mx-auto w-full my-auto">
+      <div
+        className={`w-full rounded-2xl overflow-hidden shadow-2xl border transition-all ${
+          theme === 'dark'
+            ? 'bg-slate-950/90 border-slate-800 shadow-indigo-950/10'
+            : 'bg-white border-slate-200 shadow-slate-300/40'
+        }`}
+      >
+        <div className="relative bg-black flex items-center justify-center max-h-[70vh] min-h-[260px] overflow-hidden">
+          <video
+            ref={videoRef}
+            src={url}
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full max-h-[70vh] object-contain rounded-t-xl"
+          >
+            Your browser does not support video playback.
+          </video>
+        </div>
+
+        {/* Video Player Helper Toolbar */}
+        <div
+          className={`flex flex-wrap items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 border-t ${
+            theme === 'dark'
+              ? 'bg-slate-900/90 border-slate-800 text-slate-300'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}
+        >
+          {/* Speed Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-xs font-semibold text-slate-400">Speed:</span>
+            {[0.5, 1, 1.25, 1.5, 2].map((spd) => (
+              <button
+                key={spd}
+                type="button"
+                onClick={() => handleSpeedChange(spd)}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                  playbackRate === spd
+                    ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                    : theme === 'dark'
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                }`}
+              >
+                {spd}x
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* PiP Button */}
+            <button
+              type="button"
+              onClick={togglePiP}
+              title="Picture in Picture"
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                  : 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
+              }`}
+            >
+              PiP Mode
+            </button>
+
+            {/* Loop Toggle */}
+            <button
+              type="button"
+              onClick={toggleLoop}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 border transition-all ${
+                isLooping
+                  ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/40'
+                  : theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                  : 'bg-slate-200 border-slate-300 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Repeat className="w-3.5 h-3.5" />
+              <span>{isLooping ? 'Loop: On' : 'Loop'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AudioPlayerView({
+  url,
+  title,
+  theme,
+  fileSize,
+}: {
+  url: string;
+  title: string;
+  theme: 'dark' | 'light';
+  fileSize?: number;
+}) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isLooping, setIsLooping] = useState(false);
+
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds) || seconds <= 0) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(console.error);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setCurrentTime(val);
+    if (audioRef.current) {
+      audioRef.current.currentTime = val;
+    }
+  };
+
+  const skipSeconds = (sec: number) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(
+      0,
+      Math.min(audioRef.current.currentTime + sec, duration || 0)
+    );
+  };
+
+  const toggleMute = () => {
+    if (!audioRef.current) return;
+    const nextMuted = !isMuted;
+    audioRef.current.muted = nextMuted;
+    setIsMuted(nextMuted);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    setIsMuted(val === 0);
+    if (audioRef.current) {
+      audioRef.current.volume = val;
+      audioRef.current.muted = val === 0;
+    }
+  };
+
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackRate(speed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed;
+    }
+  };
+
+  const toggleLoop = () => {
+    if (audioRef.current) {
+      audioRef.current.loop = !isLooping;
+      setIsLooping(!isLooping);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-full p-4 sm:p-8 max-w-xl mx-auto w-full my-auto">
+      <audio
+        ref={audioRef}
+        src={url}
+        preload="metadata"
+        onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
+        onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+      />
+
+      <div
+        className={`w-full rounded-3xl p-6 sm:p-8 border shadow-2xl transition-all relative overflow-hidden backdrop-blur-xl ${
+          theme === 'dark'
+            ? 'bg-slate-950/85 border-slate-800/90 shadow-indigo-950/30'
+            : 'bg-white/95 border-slate-200/90 shadow-slate-300/40'
+        }`}
+      >
+        {/* Glow ambient backgrounds */}
+        <div
+          className={`absolute -top-24 -right-24 w-60 h-60 rounded-full blur-3xl pointer-events-none transition-opacity duration-700 ${
+            isPlaying ? 'opacity-40 bg-indigo-500' : 'opacity-10 bg-indigo-600'
+          }`}
+        />
+        <div
+          className={`absolute -bottom-24 -left-24 w-60 h-60 rounded-full blur-3xl pointer-events-none transition-opacity duration-700 ${
+            isPlaying ? 'opacity-30 bg-cyan-500' : 'opacity-5 bg-cyan-600'
+          }`}
+        />
+
+        {/* Vinyl Disc / Artwork Display */}
+        <div className="flex flex-col items-center mb-6 sm:mb-8 relative z-10">
+          <div
+            className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl border-4 ${
+              isPlaying
+                ? 'border-cyan-500/50 shadow-cyan-500/25 scale-105'
+                : 'border-slate-700/40 shadow-none'
+            } ${
+              theme === 'dark'
+                ? 'bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900'
+                : 'bg-gradient-to-tr from-slate-100 via-indigo-50 to-white'
+            }`}
+          >
+            {/* Spinning inner disc when playing */}
+            <div
+              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-dashed border-cyan-400/30 flex items-center justify-center ${
+                isPlaying ? 'animate-[spin_6s_linear_infinite]' : ''
+              }`}
+            >
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg">
+                <Music className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+            </div>
+          </div>
+
+          <h4
+            className="mt-5 text-sm sm:text-base font-bold text-center truncate max-w-full px-2"
+            title={title}
+          >
+            {title}
+          </h4>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {fileSize ? formatFileSize(fileSize) : 'Audio Track'}
+          </p>
+
+          {/* Dancing Audio Equalizer Bars */}
+          <div className="flex items-end justify-center gap-1.5 h-6 mt-4">
+            {[40, 75, 55, 90, 60, 85, 45, 95, 65, 80, 50].map((h, i) => (
+              <span
+                key={i}
+                style={{
+                  height: isPlaying
+                    ? `${Math.max(15, (h * (i % 2 === 0 ? 0.9 : 1.1)) % 100)}%`
+                    : '20%',
+                  transition: 'height 0.25s ease',
+                }}
+                className={`w-1 rounded-full ${
+                  isPlaying
+                    ? 'bg-gradient-to-t from-indigo-500 to-cyan-400'
+                    : 'bg-slate-700/50'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Progress Bar & Timestamps */}
+        <div className="space-y-1.5 mb-6 relative z-10">
+          <div className="relative flex items-center">
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              step="any"
+              value={currentTime}
+              onChange={handleSeek}
+              className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-800/80 accent-indigo-500"
+            />
+          </div>
+          <div className="flex justify-between text-[11px] font-mono text-slate-400 select-none">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+        </div>
+
+        {/* Transport Playback Controls */}
+        <div className="flex items-center justify-center gap-3 sm:gap-5 mb-6 relative z-10">
+          {/* Rewind 10s */}
+          <button
+            type="button"
+            onClick={() => skipSeconds(-10)}
+            title="Rewind 10 seconds"
+            className="p-2 sm:p-2.5 rounded-full hover:bg-slate-800/60 text-slate-400 hover:text-white transition-colors"
+          >
+            <Rewind className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Big Play / Pause Button */}
+          <button
+            type="button"
+            onClick={togglePlay}
+            title={isPlaying ? 'Pause' : 'Play'}
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all"
+          >
+            {isPlaying ? (
+              <Pause className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
+            ) : (
+              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-0.5" />
+            )}
+          </button>
+
+          {/* Fast Forward 10s */}
+          <button
+            type="button"
+            onClick={() => skipSeconds(10)}
+            title="Fast forward 10 seconds"
+            className="p-2 sm:p-2.5 rounded-full hover:bg-slate-800/60 text-slate-400 hover:text-white transition-colors"
+          >
+            <FastForward className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Loop toggle */}
+          <button
+            type="button"
+            onClick={toggleLoop}
+            title={isLooping ? 'Disable Loop' : 'Enable Loop'}
+            className={`p-2 rounded-full transition-colors ${
+              isLooping
+                ? 'text-indigo-400 bg-indigo-500/10'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <Repeat className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Volume & Speed Controls Bar */}
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 pt-4 border-t relative z-10 ${
+            theme === 'dark' ? 'border-slate-800/70' : 'border-slate-200'
+          }`}
+        >
+          {/* Volume Slider */}
+          <div className="flex items-center gap-2 flex-1 min-w-[130px] max-w-[180px]">
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="text-slate-400 hover:text-white transition-colors shrink-0"
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-4 h-4 text-rose-400" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={isMuted ? 0 : volume}
+              onChange={handleVolumeChange}
+              className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-indigo-500"
+            />
+          </div>
+
+          {/* Speed selector chips */}
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
+            {[0.75, 1, 1.25, 1.5, 2].map((spd) => (
+              <button
+                key={spd}
+                type="button"
+                onClick={() => handleSpeedChange(spd)}
+                className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-medium transition-all ${
+                  playbackRate === spd
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {spd}x
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface DocViewerModalProps {
@@ -267,9 +699,22 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
   };
 
   const isTextFormat = ['txt', 'csv', 'html'].includes(file.fileType);
+  const isMediaFormat = file.fileType === 'video' || file.fileType === 'audio';
 
   const getFileBadge = (type: string) => {
     switch (type) {
+      case 'video':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+            <Video className="w-3.5 h-3.5" /> Video
+          </span>
+        );
+      case 'audio':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <Music className="w-3.5 h-3.5" /> Audio
+          </span>
+        );
       case 'pdf':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
@@ -396,69 +841,71 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
 
           {/* Controls Bar - Responsive and locked from overlapping */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
-            {/* Unified Zoom Controls */}
-            {isTextFormat ? (
-              <div
-                className={`flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border shrink-0 ${
-                  readerTheme === 'dark'
-                    ? 'bg-slate-950/80 border-slate-800'
-                    : 'bg-white border-slate-200 shadow-sm'
-                }`}
-              >
-                <button
-                  onClick={decreaseFontSize}
-                  title="Decrease Font Size"
-                  className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
+            {/* Unified Zoom Controls (for documents and images) */}
+            {!isMediaFormat && (
+              isTextFormat ? (
+                <div
+                  className={`flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border shrink-0 ${
+                    readerTheme === 'dark'
+                      ? 'bg-slate-950/80 border-slate-800'
+                      : 'bg-white border-slate-200 shadow-sm'
+                  }`}
                 >
-                  <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
-                <button
-                  onClick={resetFontSize}
-                  title="Reset Font Size (16px)"
-                  className="text-[11px] sm:text-xs font-mono px-0.5 sm:px-1 font-medium text-slate-300 hover:text-white transition-colors shrink-0"
+                  <button
+                    onClick={decreaseFontSize}
+                    title="Decrease Font Size"
+                    className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                  <button
+                    onClick={resetFontSize}
+                    title="Reset Font Size (16px)"
+                    className="text-[11px] sm:text-xs font-mono px-0.5 sm:px-1 font-medium text-slate-300 hover:text-white transition-colors shrink-0"
+                  >
+                    {fontSize}px
+                  </button>
+                  <button
+                    onClick={increaseFontSize}
+                    title="Increase Font Size"
+                    className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={`flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border shrink-0 ${
+                    readerTheme === 'dark'
+                      ? 'bg-slate-950/80 border-slate-800'
+                      : 'bg-white border-slate-200 shadow-sm'
+                  }`}
                 >
-                  {fontSize}px
-                </button>
-                <button
-                  onClick={increaseFontSize}
-                  title="Increase Font Size"
-                  className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
-                >
-                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={`flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border shrink-0 ${
-                  readerTheme === 'dark'
-                    ? 'bg-slate-950/80 border-slate-800'
-                    : 'bg-white border-slate-200 shadow-sm'
-                }`}
-              >
-                <button
-                  onClick={() => setZoomLevel((z) => Math.max(z - 25, 50))}
-                  title="Zoom Out"
-                  className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
-                >
-                  <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
+                  <button
+                    onClick={() => setZoomLevel((z) => Math.max(z - 25, 50))}
+                    title="Zoom Out"
+                    className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
 
-                <button
-                  onClick={() => setZoomLevel(100)}
-                  title="Reset Zoom (100%)"
-                  className="text-[11px] sm:text-xs font-mono px-1 font-semibold text-indigo-400 hover:text-indigo-300 transition-colors shrink-0"
-                >
-                  {zoomLevel}%
-                </button>
+                  <button
+                    onClick={() => setZoomLevel(100)}
+                    title="Reset Zoom (100%)"
+                    className="text-[11px] sm:text-xs font-mono px-1 font-semibold text-indigo-400 hover:text-indigo-300 transition-colors shrink-0"
+                  >
+                    {zoomLevel}%
+                  </button>
 
-                <button
-                  onClick={() => setZoomLevel((z) => Math.min(z + 25, 250))}
-                  title="Zoom In"
-                  className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
-                >
-                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
-              </div>
+                  <button
+                    onClick={() => setZoomLevel((z) => Math.min(z + 25, 250))}
+                    title="Zoom In"
+                    className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              )
             )}
 
             {/* Theme Toggle Button */}
@@ -675,6 +1122,25 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                     title={file.originalName}
                   />
                 </div>
+              )}
+
+              {/* VIDEO VIEWER */}
+              {file.fileType === 'video' && (
+                <VideoPlayerView
+                  url={file.cloudinaryUrl}
+                  title={file.originalName}
+                  theme={readerTheme}
+                />
+              )}
+
+              {/* AUDIO VIEWER */}
+              {file.fileType === 'audio' && (
+                <AudioPlayerView
+                  url={file.cloudinaryUrl}
+                  title={file.originalName}
+                  theme={readerTheme}
+                  fileSize={resolvedFileSize ?? file.fileSize}
+                />
               )}
             </>
           )}

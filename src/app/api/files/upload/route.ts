@@ -27,6 +27,18 @@ function determineFileType(fileName: string, mimeType: string): FileType | null 
   ) {
     return 'image';
   }
+  if (
+    mimeType.startsWith('video/') ||
+    /\.(mp4|webm|mov|avi|mkv|wmv|flv|m4v|3gp|ogv)$/i.test(lowerName)
+  ) {
+    return 'video';
+  }
+  if (
+    mimeType.startsWith('audio/') ||
+    /\.(mp3|wav|ogg|m4a|aac|flac|wma|opus|weba)$/i.test(lowerName)
+  ) {
+    return 'audio';
+  }
 
   return null;
 }
@@ -58,9 +70,20 @@ export async function POST(request: NextRequest) {
     if (!fileType) {
       return NextResponse.json(
         {
-          error: 'Unsupported file type. Allowed formats: .txt, .html, .pdf, .csv, and image files.',
+          error: 'Unsupported file type. Allowed formats: PDF, TXT, HTML, CSV, Images, Audio, and Video files.',
         },
         { status: 400 }
+      );
+    }
+
+    // Only the dedicated media account ("video") is authorized to upload audio and video
+    const isMediaAccount = authUser.username?.toLowerCase() === 'video';
+    if (!isMediaAccount && (fileType === 'video' || fileType === 'audio')) {
+      return NextResponse.json(
+        {
+          error: 'Audio and video uploads are restricted to the dedicated media account ("video"). Please log in to the "video" account to upload media files.',
+        },
+        { status: 403 }
       );
     }
 

@@ -37,9 +37,14 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] sm:text-xs text-slate-300 max-w-[120px] sm:max-w-[180px] truncate">
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] sm:text-xs text-slate-300">
               <UserIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-400 shrink-0" />
-              <span className="truncate">{user?.username}</span>
+              <span className="truncate max-w-[90px] sm:max-w-[140px]">{user?.username}</span>
+              {user?.username?.toLowerCase() === 'video' && (
+                <span className="px-1.5 py-0.5 rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shrink-0">
+                  Media Mode
+                </span>
+              )}
             </div>
 
             <button

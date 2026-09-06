@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/User';
-import { comparePassword, signToken } from '@/lib/auth';
+import { comparePassword, hashPassword, signToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +18,26 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
 
     const normalizedUsername = username.trim().toLowerCase();
-    const user = await User.findOne({ username: normalizedUsername });
+    let user = await User.findOne({ username: normalizedUsername });
+
+    // Auto-ensure dedicated media account (@video) with video@123
+    if (normalizedUsername === 'video' && password === 'video@123') {
+      if (!user) {
+        const passwordHash = await hashPassword('video@123');
+        user = await User.create({
+          username: 'video',
+          passwordHash,
+          createdAt: new Date(),
+        });
+      } else {
+        const isMatch = await comparePassword(password, user.passwordHash);
+        if (!isMatch) {
+          const passwordHash = await hashPassword('video@123');
+          user.passwordHash = passwordHash;
+          await user.save();
+        }
+      }
+    }
 
     if (!user) {
       return NextResponse.json(

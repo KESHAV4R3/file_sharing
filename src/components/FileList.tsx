@@ -9,6 +9,9 @@ import {
   FileCode,
   FileImage,
   File as FileIcon,
+  Video,
+  Music,
+  Play,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -140,6 +143,10 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
 
   const getFileTypeIcon = (type: string) => {
     switch (type) {
+      case 'video':
+        return <Video className="w-5 h-5 text-violet-400" />;
+      case 'audio':
+        return <Music className="w-5 h-5 text-cyan-400" />;
       case 'pdf':
         return <FileIcon className="w-5 h-5 text-rose-400" />;
       case 'image':
@@ -157,6 +164,10 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
 
   const getFileTypeBadge = (type: string) => {
     switch (type) {
+      case 'video':
+        return <span className="text-[11px] font-semibold text-violet-400 uppercase">Video</span>;
+      case 'audio':
+        return <span className="text-[11px] font-semibold text-cyan-400 uppercase">Audio</span>;
       case 'pdf':
         return <span className="text-[11px] font-semibold text-rose-400 uppercase">PDF</span>;
       case 'image':
@@ -197,9 +208,9 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
         {/* Header and Refresh */}
         <div className="flex items-center justify-between mb-5 sm:mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-white">Your Documents</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-white">Your Files</h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              {pagination.total} document{pagination.total === 1 ? '' : 's'} stored
+              {pagination.total} file{pagination.total === 1 ? '' : 's'} stored
             </p>
           </div>
           <button
@@ -239,7 +250,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
         {loading && files.length === 0 ? (
           <div className="py-16 text-center">
             <div className="w-8 h-8 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-slate-400">Loading your documents...</p>
+            <p className="text-sm text-slate-400">Loading your files...</p>
           </div>
         ) : files.length === 0 ? (
           /* Empty State */
@@ -247,15 +258,15 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-500 mx-auto mb-3">
               <FolderOpen className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
-            <h3 className="text-sm sm:text-base font-medium text-white mb-1">No documents uploaded yet</h3>
+            <h3 className="text-sm sm:text-base font-medium text-white mb-1">No files uploaded yet</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto mb-5">
-              Upload your first PDF, TXT, CSV, HTML, or image document to view it inline anytime.
+              Upload your first document, image, audio, or video file to view or play it inline anytime.
             </p>
             <button
               onClick={onGoToUpload}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-md transition-all"
             >
-              Upload Document
+              Upload File
             </button>
           </div>
         ) : (
@@ -265,7 +276,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
               <div
                 key={file.id}
                 onClick={() => onSelectFile(file)}
-                className="group p-3.5 sm:p-4 bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5"
+                className="group p-3.5 sm:p-4 bg-slate-950/50 hover:bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5"
               >
                 <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -293,7 +304,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                 </div>
 
                 <div className="flex items-center justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/40">
-                  {/* View / Read Button */}
+                  {/* View / Play Button */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -302,8 +313,12 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                     }}
                     className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-indigo-600/10 group-hover:bg-indigo-600 text-indigo-400 group-hover:text-white border border-indigo-500/20 group-hover:border-transparent text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
                   >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>View / Read</span>
+                    {file.fileType === 'video' || file.fileType === 'audio' ? (
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                    <span>{file.fileType === 'video' || file.fileType === 'audio' ? 'Play' : 'View / Read'}</span>
                   </button>
 
                   {/* Delete Button */}

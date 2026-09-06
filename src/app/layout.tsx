@@ -6,8 +6,8 @@ import { AuthProvider } from '@/context/AuthContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Personal Document Storage & Reader',
-  description: 'Secure in-memory personal document storage and native in-browser reader for PDF, TXT, CSV, HTML, and Images.',
+  title: 'Personal File Storage & Reader',
+  description: 'Secure personal file storage and native in-browser reader and player for PDF, TXT, CSV, HTML, Images, Audio, and Video.',
 };
 
 export default function RootLayout({

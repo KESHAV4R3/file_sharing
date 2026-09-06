@@ -11,6 +11,8 @@ const MIME_MAP: Record<string, string> = {
   html:  'text/html; charset=utf-8',
   csv:   'text/csv; charset=utf-8',
   image: 'image/jpeg',
+  video: 'video/mp4',
+  audio: 'audio/mpeg',
 };
 
 async function tryFetch(url: string): Promise<Response | null> {
@@ -25,7 +27,7 @@ async function tryFetch(url: string): Promise<Response | null> {
 
 function buildSignedUrl(
   publicId: string,
-  resourceType: 'image' | 'raw',
+  resourceType: 'image' | 'raw' | 'video',
   deliveryType: 'upload' | 'authenticated'
 ): string {
   const expireAt = Math.floor(Date.now() / 1000) + 300;
@@ -75,19 +77,21 @@ export async function GET(
     // ── Fetch strategy cascade ──────────────────────────────────────────────
     // 1. Direct stored URL (works for public assets)
     // 2-5. Signed URLs covering all resource_type × delivery_type combos
-    //      (covers assets stored as authenticated / raw / image)
+    //      (covers assets stored as authenticated / raw / image / video)
     let upstream: Response | null = await tryFetch(cloudinaryUrl);
 
     if (!upstream && publicId) {
       const candidates: Array<[string, string]> = [
         // [resource_type, delivery_type]
+        ['video', 'upload'],
+        ['video', 'authenticated'],
         ['image', 'authenticated'],
         ['image', 'upload'],
         ['raw',   'authenticated'],
         ['raw',   'upload'],
       ];
       for (const [rt, dt] of candidates) {
-        const signed = buildSignedUrl(publicId, rt as 'image' | 'raw', dt as 'upload' | 'authenticated');
+        const signed = buildSignedUrl(publicId, rt as 'image' | 'raw' | 'video', dt as 'upload' | 'authenticated');
         upstream = await tryFetch(signed);
         if (upstream) break;
       }
@@ -103,7 +107,7 @@ export async function GET(
       );
     }
 
-    const contentType = MIME_MAP[fileType] ?? 'application/octet-stream';
+    const contentType = upstream.headers.get('content-type') || MIME_MAP[fileType] || 'application/octet-stream';
     const body        = upstream.body;
     if (!body) {
       return NextResponse.json({ error: 'Empty response from Cloudinary.' }, { status: 502 });

@@ -27,11 +27,14 @@ export async function uploadBufferToCloudinary(
   }
 
   // Resource type mapping:
+  // - 'video' : video AND audio (Cloudinary processes all audio as video resource_type)
   // - 'image' : images AND pdfs (Cloudinary natively serves PDFs as image resources
   //              with public delivery – using 'auto' or 'raw' makes them private)
   // - 'raw'   : txt, html, csv (plain text, publicly readable)
-  let resourceType: 'image' | 'raw';
-  if (fileType === 'image' || fileType === 'pdf') {
+  let resourceType: 'video' | 'image' | 'raw';
+  if (fileType === 'video' || fileType === 'audio') {
+    resourceType = 'video';
+  } else if (fileType === 'image' || fileType === 'pdf') {
     resourceType = 'image';
   } else {
     resourceType = 'raw';
@@ -78,12 +81,17 @@ export async function deleteFromCloudinary(
   }
 
   // Match the upload resource_type logic:
-  // pdf + image → 'image', txt/html/csv → 'raw'
-  const primaryType: 'image' | 'raw' =
-    fileType === 'image' || fileType === 'pdf' ? 'image' : 'raw';
+  // video/audio → 'video', pdf/image → 'image', txt/html/csv → 'raw'
+  const primaryType: 'image' | 'raw' | 'video' =
+    fileType === 'video' || fileType === 'audio'
+      ? 'video'
+      : fileType === 'image' || fileType === 'pdf'
+      ? 'image'
+      : 'raw';
+  const allTypes: Array<'image' | 'raw' | 'video'> = ['video', 'image', 'raw'];
   const typesToTry: Array<'image' | 'raw' | 'video'> = [
     primaryType,
-    primaryType === 'image' ? 'raw' : 'image',
+    ...allTypes.filter((t) => t !== primaryType),
   ];
 
   for (const resourceType of typesToTry) {

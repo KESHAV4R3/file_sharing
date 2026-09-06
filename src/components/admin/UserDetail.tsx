@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft, User, FileText, Trash2, Edit2, Save, X,
   Key, AlertTriangle, CheckCircle2, File as FileIcon,
-  FileImage, FileSpreadsheet, FileCode, Eye,
+  FileImage, FileSpreadsheet, FileCode, Eye, Video, Music,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 
@@ -17,6 +17,8 @@ function formatBytes(b: number) {
 
 function FileTypeIcon({ type }: { type: string }) {
   const cls = 'w-4 h-4';
+  if (type === 'video') return <Video className={`${cls} text-violet-400`} />;
+  if (type === 'audio') return <Music className={`${cls} text-cyan-400`} />;
   if (type === 'pdf')   return <FileIcon className={`${cls} text-red-400`} />;
   if (type === 'image') return <FileImage className={`${cls} text-blue-400`} />;
   if (type === 'csv')   return <FileSpreadsheet className={`${cls} text-emerald-400`} />;
