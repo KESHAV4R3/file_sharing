@@ -190,15 +190,15 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
   return (
     <div className="max-w-4xl mx-auto">
       <div
-        className={`bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-2xl p-6 sm:p-8 shadow-xl transition-all duration-300 ${
+        className={`bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl transition-all duration-300 ${
           fileToDelete ? 'filter blur-md pointer-events-none select-none scale-[0.99] opacity-75' : ''
         }`}
       >
         {/* Header and Refresh */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5 sm:mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-white">Your Documents</h2>
-            <p className="text-sm text-slate-400 mt-0.5">
+            <h2 className="text-lg sm:text-xl font-semibold text-white">Your Documents</h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
               {pagination.total} document{pagination.total === 1 ? '' : 's'} stored
             </p>
           </div>
@@ -206,7 +206,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
             onClick={() => fetchFiles(pagination.page)}
             disabled={loading}
             title="Refresh files"
-            className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition-all disabled:opacity-50"
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
@@ -214,7 +214,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
 
         {/* Success Banner */}
         {successBanner && (
-          <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="mb-5 sm:mb-6 p-3.5 sm:p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs sm:text-sm flex items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{successBanner}</span>
@@ -230,7 +230,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
 
         {/* Error State */}
         {error && (
-          <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-sm">
+          <div className="mb-5 sm:mb-6 p-3.5 sm:p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs sm:text-sm">
             {error}
           </div>
         )}
@@ -243,11 +243,11 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
           </div>
         ) : files.length === 0 ? (
           /* Empty State */
-          <div className="py-16 px-4 text-center border-2 border-dashed border-slate-800 rounded-2xl">
-            <div className="w-14 h-14 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-500 mx-auto mb-3">
-              <FolderOpen className="w-7 h-7" />
+          <div className="py-12 sm:py-16 px-4 text-center border-2 border-dashed border-slate-800 rounded-2xl">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-500 mx-auto mb-3">
+              <FolderOpen className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
-            <h3 className="text-base font-medium text-white mb-1">No documents uploaded yet</h3>
+            <h3 className="text-sm sm:text-base font-medium text-white mb-1">No documents uploaded yet</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto mb-5">
               Upload your first PDF, TXT, CSV, HTML, or image document to view it inline anytime.
             </p>
@@ -265,20 +265,20 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
               <div
                 key={file.id}
                 onClick={() => onSelectFile(file)}
-                className="group p-4 bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 rounded-xl flex items-center justify-between gap-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5"
+                className="group p-3.5 sm:p-4 bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5"
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     {getFileTypeIcon(file.fileType)}
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-white truncate max-w-xs sm:max-w-md">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                      <p className="text-sm font-medium text-white truncate max-w-full sm:max-w-xs md:max-w-md" title={file.originalName}>
                         {file.originalName}
                       </p>
-                      {getFileTypeBadge(file.fileType)}
+                      <div className="shrink-0">{getFileTypeBadge(file.fileType)}</div>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <span>Uploaded {formatDate(file.uploadedAt)}</span>
                       {file.fileSize ? (
                         <>
@@ -292,7 +292,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/40">
                   {/* View / Read Button */}
                   <button
                     type="button"
@@ -300,7 +300,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                       e.stopPropagation();
                       onSelectFile(file);
                     }}
-                    className="px-3.5 py-1.5 rounded-lg bg-indigo-600/10 group-hover:bg-indigo-600 text-indigo-400 group-hover:text-white border border-indigo-500/20 group-hover:border-transparent text-xs font-medium flex items-center gap-1.5 transition-all"
+                    className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-indigo-600/10 group-hover:bg-indigo-600 text-indigo-400 group-hover:text-white border border-indigo-500/20 group-hover:border-transparent text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>View / Read</span>
@@ -414,7 +414,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-3 pt-2">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-2">
                   <button
                     type="button"
                     disabled={isDeleting}
@@ -422,7 +422,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                       setFileToDelete(null);
                       setDeleteModalError(null);
                     }}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-all disabled:opacity-50 min-w-[80px]"
+                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-all disabled:opacity-50 min-w-[80px] text-center"
                   >
                     Cancel
                   </button>
@@ -430,7 +430,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                     type="button"
                     disabled={isDeleting}
                     onClick={handleConfirmDelete}
-                    className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[140px] whitespace-nowrap shrink-0"
+                    className="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[140px] whitespace-nowrap shrink-0"
                   >
                     {isDeleting ? (
                       <>

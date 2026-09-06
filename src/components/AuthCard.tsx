@@ -47,7 +47,7 @@ export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void }
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-2xl shadow-2xl p-8 text-slate-100 transition-all">
+      <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-2xl shadow-2xl p-5 sm:p-8 text-slate-100 transition-all">
         {/* Top Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/20 mb-4">

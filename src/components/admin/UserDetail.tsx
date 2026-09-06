@@ -223,7 +223,7 @@ export default function UserDetail({
                     {f.fileType.toUpperCase()} · {formatBytes(f.fileSize)} · {new Date(f.uploadedAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <a href={f.cloudinaryUrl} target="_blank" rel="noreferrer"
                     className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors" title="View">
                     <Eye className="w-3.5 h-3.5" />

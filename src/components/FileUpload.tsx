@@ -114,23 +114,23 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-2xl p-6 sm:p-8 shadow-xl">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-white">Upload New Document</h2>
-          <p className="text-sm text-slate-400 mt-1">
+      <div className="bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-2xl p-4 sm:p-8 shadow-xl">
+        <div className="mb-5 sm:mb-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Upload New Document</h2>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
             Store documents securely on Cloudinary CDN. Supports PDF, TXT, CSV, HTML, and Images.
           </p>
         </div>
 
         {error && (
           <div
-            className={`mb-5 p-4 rounded-xl text-sm flex items-start justify-between gap-3 ${
+            className={`mb-5 p-3.5 sm:p-4 rounded-xl text-xs sm:text-sm flex items-start justify-between gap-3 ${
               isDuplicate
                 ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300'
                 : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
             }`}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2.5 sm:gap-3">
               <AlertCircle
                 className={`w-5 h-5 shrink-0 mt-0.5 ${
                   isDuplicate ? 'text-amber-400' : 'text-rose-400'
@@ -148,7 +148,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
               <button
                 type="button"
                 onClick={onUploadSuccess}
-                className="px-3 py-1.5 bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 border border-amber-500/30 rounded-lg text-xs font-medium flex items-center gap-1 shrink-0 transition-colors"
+                className="px-2.5 sm:px-3 py-1.5 bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 border border-amber-500/30 rounded-lg text-xs font-medium flex items-center gap-1 shrink-0 transition-colors"
               >
                 <span>View Library</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -158,14 +158,14 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
         )}
 
         {success && (
-          <div className="mb-5 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm flex items-center justify-between gap-3">
+          <div className="mb-5 p-3.5 sm:p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-5 h-5 shrink-0" />
               <span>{success}</span>
             </div>
             <button
               onClick={onUploadSuccess}
-              className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors"
+              className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors shrink-0"
             >
               Go to View/Read <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
@@ -178,7 +178,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
+          className={`border-2 border-dashed rounded-2xl p-6 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
             dragOver
               ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]'
               : 'border-slate-700/80 hover:border-slate-600 bg-slate-950/40 hover:bg-slate-950/60'
@@ -193,13 +193,13 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
           />
 
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4 shadow-inner">
-              <UploadCloud className="w-8 h-8" />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3 sm:mb-4 shadow-inner">
+              <UploadCloud className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
-            <p className="text-base font-medium text-slate-200 mb-1">
+            <p className="text-sm sm:text-base font-medium text-slate-200 mb-1">
               Drag & drop your document here, or <span className="text-indigo-400 underline">browse</span>
             </p>
-            <p className="text-xs text-slate-500 max-w-sm">
+            <p className="text-[11px] sm:text-xs text-slate-500 max-w-sm">
               Supports .pdf, .txt, .csv, .html, .jpg, .png, .webp (up to 25MB)
             </p>
           </div>
@@ -207,18 +207,18 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
 
         {/* Selected File Details */}
         {selectedFile && (
-          <div className="mt-5 p-4 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-indigo-400 shrink-0">
-                <FileText className="w-5 h-5" />
+          <div className="mt-4 sm:mt-5 p-3.5 sm:p-4 bg-slate-950/70 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 overflow-hidden min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-slate-800 flex items-center justify-center text-indigo-400 shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-white truncate">{selectedFile.name}</p>
                 <p className="text-xs text-slate-400">{formatFileSize(selectedFile.size)}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/40">
               <button
                 type="button"
                 onClick={(e) => {
@@ -235,7 +235,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
                 type="button"
                 disabled={uploading}
                 onClick={handleUpload}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold rounded-lg shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                className="flex-1 sm:flex-initial px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {uploading ? (
                   <>

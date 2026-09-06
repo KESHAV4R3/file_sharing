@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Papa from 'papaparse';
+import PdfCanvasViewer from './PdfCanvasViewer';
 import {
   X,
   Maximize2,
@@ -20,6 +21,7 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle2,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -59,6 +61,13 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [readerTheme, setReaderTheme] = useState<'dark' | 'light'>('dark');
   const [fontSize, setFontSize] = useState<number>(16);
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+
+  // Reset zoom when a new file is opened
+  useEffect(() => {
+    setZoomLevel(100);
+    setFontSize(16);
+  }, [file?.id]);
 
   // Deletion states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -326,44 +335,49 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
               border-radius: 4px;
               font-family: monospace;
             }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-            }
-            th, td {
-              border: 1px solid ${readerTheme === 'dark' ? '#334155' : '#cbd5e1'};
-              padding: 8px 12px;
-            }
-          </style>
-        </head>
-        <body>
-          ${textContent}
-        </body>
-      </html>
-    `;
-  };
+              table {
+                border-collapse: collapse;
+                width: 100%;
+              }
+              th, td {
+                border: 1px solid ${readerTheme === 'dark' ? '#334155' : '#cbd5e1'};
+                padding: 8px 12px;
+              }
+              /* Responsive visible scroller */
+              ::-webkit-scrollbar { width: 10px; height: 10px; }
+              ::-webkit-scrollbar-track { background: ${readerTheme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : 'rgba(241, 245, 249, 0.9)'}; }
+              ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.6); border-radius: 6px; }
+              ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.9); }
+            </style>
+          </head>
+          <body>
+            ${textContent}
+          </body>
+        </html>
+      `;
+    };
 
   const displaySize = formatFileSize(resolvedFileSize ?? file.fileSize);
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xl animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-0 sm:p-3 md:p-6 bg-slate-950/70 backdrop-blur-xl animate-in fade-in duration-200">
       <div
         ref={containerRef}
-        className={`w-full flex flex-col rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
+        className={`w-full flex flex-col sm:rounded-2xl rounded-none overflow-hidden shadow-2xl transition-all duration-300 ${
           showDeleteConfirm ? 'filter blur-md pointer-events-none select-none scale-[0.99] opacity-75' : ''
         } ${
           isFullscreen
             ? 'h-screen w-screen rounded-none'
-            : 'max-w-6xl h-[92vh]'
+            : 'max-w-6xl h-[100dvh] sm:h-[92vh]'
         } ${
           readerTheme === 'dark'
-            ? 'bg-slate-950 text-slate-100 border border-slate-800'
-            : 'bg-white text-slate-900 border border-slate-200'
+            ? 'bg-slate-950 text-slate-100 border-0 sm:border border-slate-800'
+            : 'bg-white text-slate-900 border-0 sm:border border-slate-200'
         }`}
       >
         {/* Reader Navigation & Controls Toolbar */}
         <div
-          className={`flex items-center justify-between px-4 sm:px-6 py-3 border-b shrink-0 transition-colors gap-3 overflow-hidden ${
+          className={`flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 border-b shrink-0 transition-colors gap-2 sm:gap-3 ${
             readerTheme === 'dark'
               ? 'bg-slate-900/90 border-slate-800 text-slate-200'
               : 'bg-slate-100/90 border-slate-200 text-slate-800'
@@ -371,21 +385,21 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
         >
           {/* File Info Title */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
-            <div className="shrink-0">{getFileBadge(file.fileType)}</div>
+            <div className="shrink-0 scale-90 sm:scale-100">{getFileBadge(file.fileType)}</div>
             <h3
-              className="font-semibold text-sm sm:text-base truncate min-w-0"
+              className="font-semibold text-xs sm:text-sm md:text-base truncate min-w-0"
               title={file.originalName}
             >
               {file.originalName}
             </h3>
           </div>
 
-          {/* Controls Bar - Locked from shrinking or overlapping */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
-            {/* Font Size Controls (For text, csv, html) */}
-            {isTextFormat && (
+          {/* Controls Bar - Responsive and locked from overlapping */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
+            {/* Unified Zoom Controls */}
+            {isTextFormat ? (
               <div
-                className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl border shrink-0 ${
+                className={`flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border shrink-0 ${
                   readerTheme === 'dark'
                     ? 'bg-slate-950/80 border-slate-800'
                     : 'bg-white border-slate-200 shadow-sm'
@@ -398,12 +412,48 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                 >
                   <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
-                <span className="text-xs font-mono px-1 font-medium text-slate-400 shrink-0">
+                <button
+                  onClick={resetFontSize}
+                  title="Reset Font Size (16px)"
+                  className="text-[11px] sm:text-xs font-mono px-0.5 sm:px-1 font-medium text-slate-300 hover:text-white transition-colors shrink-0"
+                >
                   {fontSize}px
-                </span>
+                </button>
                 <button
                   onClick={increaseFontSize}
                   title="Increase Font Size"
+                  className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
+                >
+                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={`flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border shrink-0 ${
+                  readerTheme === 'dark'
+                    ? 'bg-slate-950/80 border-slate-800'
+                    : 'bg-white border-slate-200 shadow-sm'
+                }`}
+              >
+                <button
+                  onClick={() => setZoomLevel((z) => Math.max(z - 25, 50))}
+                  title="Zoom Out"
+                  className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
+                >
+                  <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+
+                <button
+                  onClick={() => setZoomLevel(100)}
+                  title="Reset Zoom (100%)"
+                  className="text-[11px] sm:text-xs font-mono px-1 font-semibold text-indigo-400 hover:text-indigo-300 transition-colors shrink-0"
+                >
+                  {zoomLevel}%
+                </button>
+
+                <button
+                  onClick={() => setZoomLevel((z) => Math.min(z + 25, 250))}
+                  title="Zoom In"
                   className="p-1 rounded-lg hover:bg-slate-800/20 text-slate-400 hover:text-white transition-colors shrink-0"
                 >
                   <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -415,54 +465,69 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
             <button
               onClick={() => setReaderTheme(readerTheme === 'dark' ? 'light' : 'dark')}
               title={`Switch to ${readerTheme === 'dark' ? 'Light' : 'Dark'} theme`}
-              className={`p-2 rounded-xl border transition-all shrink-0 ${
+              className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition-all shrink-0 ${
                 readerTheme === 'dark'
                   ? 'bg-slate-950/80 border-slate-800 hover:border-slate-700 text-amber-400'
                   : 'bg-white border-slate-200 hover:border-slate-300 text-indigo-600 shadow-sm'
               }`}
             >
-              {readerTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {readerTheme === 'dark' ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             </button>
 
-            {/* Fullscreen Toggle */}
+            {/* Fullscreen Toggle - Hidden on small mobile */}
             <button
               onClick={toggleFullscreen}
               title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
-              className={`p-2 rounded-xl border transition-all shrink-0 ${
+              className={`hidden sm:inline-flex p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition-all shrink-0 ${
                 readerTheme === 'dark'
                   ? 'bg-slate-950/80 border-slate-800 hover:border-slate-700 text-slate-300'
                   : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
               }`}
             >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             </button>
 
-            <div className="h-4 w-px bg-slate-700/60 shrink-0 mx-0.5" />
+            {/* Open Raw / Full View in New Tab */}
+            <a
+              href={pdfBlobUrl || file.cloudinaryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open full document in new tab"
+              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition-all shrink-0"
+            >
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </a>
+
+            <div className="h-4 w-px bg-slate-700/60 shrink-0 mx-0.5 hidden sm:block" />
 
             {/* Delete Document Button */}
             <button
               onClick={() => setShowDeleteConfirm(true)}
               title="Delete this document"
-              className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/25 transition-all shrink-0"
+              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/25 transition-all shrink-0"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             {/* Close Modal */}
             <button
               onClick={onClose}
               title="Close Reader"
-              className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all shrink-0"
+              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all shrink-0"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
 
-        {/* Content Viewer Body */}
+        {/* Content Viewer Body with Dedicated Single Scroller */}
         <div
-          className={`flex-1 overflow-auto transition-colors ${
-            readerTheme === 'dark' ? 'bg-slate-900/90' : 'bg-slate-50'
+          className={`flex-1 ${
+            file.fileType === 'html'
+              ? 'overflow-hidden'
+              : 'overflow-auto modal-scroller'
+          } transition-colors ${
+            readerTheme === 'dark' ? 'bg-slate-900/90' : 'bg-slate-50 modal-scroller-light'
           } ${showDeleteConfirm ? 'pointer-events-none select-none' : ''}`}
         >
           {loadingContent && (
@@ -483,53 +548,50 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
 
           {!loadingContent && !contentError && (
             <>
-              {/* PDF VIEWER – blob URL fetched with auth token */}
+              {/* PDF VIEWER – High-Fidelity Canvas Reader with Native Mobile & Desktop Support */}
               {file.fileType === 'pdf' && (
-                <div className="w-full h-full min-h-[500px] flex items-center justify-center">
-                  {pdfLoading && (
-                    <div className="flex flex-col items-center gap-3 text-slate-400">
-                      <svg className="animate-spin w-8 h-8" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                      <span className="text-sm">Loading PDF…</span>
-                    </div>
-                  )}
-                  {pdfError && (
-                    <div className="flex flex-col items-center gap-2 text-red-400 px-6 text-center">
-                      <AlertTriangle className="w-8 h-8" />
-                      <p className="text-sm font-medium">{pdfError}</p>
-                    </div>
-                  )}
-                  {pdfBlobUrl && !pdfError && (
-                    <iframe
-                      src={`${pdfBlobUrl}#toolbar=0&navpanes=0`}
-                      className="w-full h-full border-0"
-                      title={file.originalName}
-                    />
-                  )}
-                </div>
+                <PdfCanvasViewer
+                  fileId={file.id}
+                  originalName={file.originalName}
+                  fetchWithAuth={fetchWithAuth}
+                  zoomLevel={zoomLevel}
+                  readerTheme={readerTheme}
+                />
               )}
 
               {/* IMAGE VIEWER */}
               {file.fileType === 'image' && (
-                <div className="w-full h-full flex items-center justify-center p-4 sm:p-8 select-none">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={file.cloudinaryUrl}
-                    alt={file.originalName}
-                    className="max-h-[82vh] max-w-full object-contain rounded-xl shadow-lg"
-                    onContextMenu={(e) => e.preventDefault()}
-                  />
+                <div
+                  className={`w-max min-w-full min-h-full inline-flex p-4 sm:p-8 transition-all ${
+                    zoomLevel > 100 ? 'items-start justify-start' : 'items-center justify-center'
+                  }`}
+                >
+                  <div className="w-max min-w-full flex items-center justify-center m-auto">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={file.cloudinaryUrl}
+                      alt={file.originalName}
+                      style={{
+                        width: zoomLevel === 100 ? 'auto' : `${zoomLevel}%`,
+                        maxWidth: zoomLevel === 100 ? '100%' : 'none',
+                        maxHeight: zoomLevel === 100 ? '80vh' : 'none',
+                        minWidth: zoomLevel > 100 ? `${Math.round(360 * (zoomLevel / 100))}px` : undefined,
+                        height: 'auto',
+                        transition: 'width 0.15s ease-out',
+                      }}
+                      className="rounded-xl shadow-2xl select-none block object-contain"
+                      onContextMenu={(e) => e.preventDefault()}
+                    />
+                  </div>
                 </div>
               )}
 
               {/* TXT VIEWER */}
               {file.fileType === 'txt' && (
-                <div className="p-6 sm:p-10 max-w-5xl mx-auto">
+                <div className="p-3 sm:p-6 md:p-10 max-w-5xl mx-auto">
                   <pre
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
-                    className={`font-mono whitespace-pre-wrap break-words rounded-xl p-6 sm:p-8 transition-all ${
+                    className={`font-mono whitespace-pre-wrap break-words rounded-xl p-4 sm:p-8 transition-all ${
                       readerTheme === 'dark'
                         ? 'bg-slate-900/60 border border-slate-800 text-slate-200'
                         : 'bg-white border border-slate-200 text-slate-800 shadow-sm'
@@ -542,7 +604,7 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
 
               {/* CSV TABLE VIEWER */}
               {file.fileType === 'csv' && (
-                <div className="p-4 sm:p-8 max-w-full overflow-x-auto">
+                <div className="p-2 sm:p-6 md:p-8 w-max min-w-full">
                   {csvData.length === 0 ? (
                     <p className="text-sm text-slate-400 text-center py-12">The CSV file is empty.</p>
                   ) : (
@@ -558,17 +620,17 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                         className="min-w-full divide-y divide-slate-800/60 text-left"
                       >
                         <thead
-                          className={
+                          className={`sticky top-0 z-10 ${
                             readerTheme === 'dark'
-                              ? 'bg-slate-950/90 text-indigo-400'
+                              ? 'bg-slate-950/95 text-indigo-400'
                               : 'bg-slate-100 text-indigo-700'
-                          }
+                          }`}
                         >
                           <tr>
                             {csvData[0]?.map((header, idx) => (
                               <th
                                 key={idx}
-                                className="px-4 py-3 font-semibold tracking-wider whitespace-nowrap border-b border-slate-700/40"
+                                className="px-3 sm:px-4 py-2.5 sm:py-3 font-semibold tracking-wider whitespace-nowrap border-b border-slate-700/40 text-xs sm:text-sm"
                               >
                                 {header || `Col ${idx + 1}`}
                               </th>
@@ -590,7 +652,7 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                               }
                             >
                               {row.map((cell, cellIdx) => (
-                                <td key={cellIdx} className="px-4 py-2.5 whitespace-nowrap">
+                                <td key={cellIdx} className="px-3 sm:px-4 py-2 sm:py-2.5 whitespace-nowrap text-xs sm:text-sm">
                                   {cell}
                                 </td>
                               ))}
@@ -605,7 +667,7 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
 
               {/* HTML VIEWER */}
               {file.fileType === 'html' && (
-                <div className="w-full h-full min-h-[500px]">
+                <div className="w-full h-full flex-1">
                   <iframe
                     sandbox="allow-same-origin"
                     srcDoc={buildSandboxedHtmlDoc()}
@@ -618,23 +680,29 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
           )}
         </div>
 
+        {/* Mobile touch-scroll helper pill when zoomed */}
+        {(file.fileType === 'pdf' || file.fileType === 'image') && zoomLevel > 100 && (
+          <div className="sm:hidden flex items-center justify-center py-1 bg-indigo-950/40 border-t border-indigo-500/20 text-[10px] text-indigo-300 gap-1.5 select-none px-3">
+            <span>↔</span>
+            <span>Zoomed {zoomLevel}% — Swipe horizontally & vertically to browse</span>
+          </div>
+        )}
+
         {/* Document Stats & Highlighted Size Bottom Bar */}
         <div
-          className={`flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-2.5 border-t text-xs shrink-0 select-none transition-colors ${
+          className={`flex items-center justify-between gap-2 px-3 sm:px-6 py-2 border-t text-xs shrink-0 select-none transition-colors ${
             readerTheme === 'dark'
               ? 'bg-slate-900/90 border-slate-800 text-slate-400'
               : 'bg-slate-100/90 border-slate-200 text-slate-600'
           }`}
         >
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-slate-500">File:</span>
-              <span className="font-medium text-slate-200 truncate max-w-[160px] sm:max-w-xs">
-                {file.originalName}
-              </span>
-            </div>
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+            <span className="text-slate-500 shrink-0">File:</span>
+            <span className="font-medium text-slate-200 truncate max-w-[130px] sm:max-w-xs md:max-w-md" title={file.originalName}>
+              {file.originalName}
+            </span>
             <span className="text-slate-700 hidden sm:inline">•</span>
-            <div className="flex items-center gap-1.5">
+            <div className="items-center gap-1 hidden sm:flex">
               <span className="text-slate-500">Type:</span>
               <span className="uppercase font-semibold text-slate-300">{file.fileType}</span>
             </div>
@@ -642,16 +710,16 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
 
           {/* Highlighted Document Size in Footer */}
           {displaySize && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400 font-medium">Document Size:</span>
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              <span className="text-slate-400 font-medium hidden sm:inline">Size:</span>
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono font-bold text-xs transition-all ${
+                className={`inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-mono font-bold text-[11px] sm:text-xs transition-all ${
                   readerTheme === 'dark'
                     ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]'
                     : 'bg-amber-500/15 text-amber-900 border border-amber-300'
                 }`}
               >
-                <HardDrive className="w-3.5 h-3.5 text-amber-400" />
+                <HardDrive className="w-3 h-3 text-amber-400" />
                 {displaySize}
               </span>
             </div>
@@ -716,7 +784,7 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-3 pt-2">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-2">
                   <button
                     type="button"
                     disabled={isDeleting}
@@ -724,7 +792,7 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                       setShowDeleteConfirm(false);
                       setDeleteError(null);
                     }}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-all disabled:opacity-50 min-w-[80px]"
+                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-all disabled:opacity-50 min-w-[80px] text-center"
                   >
                     Cancel
                   </button>
@@ -732,7 +800,7 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                     type="button"
                     disabled={isDeleting}
                     onClick={handleDeleteDocument}
-                    className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[140px] whitespace-nowrap shrink-0"
+                    className="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[140px] whitespace-nowrap shrink-0"
                   >
                     {isDeleting ? (
                       <>
