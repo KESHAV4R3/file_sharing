@@ -46,6 +46,18 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 
   try {
     cached.conn = await cached.promise;
+
+    // Drop the stale email_1 unique index left over from a previous schema.
+    // It does not exist in our User model, but causes E11000 on every registration
+    // because every new user has email=null which violates the unique constraint.
+    try {
+      await cached.conn.connection.db
+        ?.collection('users')
+        .dropIndex('email_1');
+      console.log('[DB] Dropped stale email_1 index from users collection.');
+    } catch {
+      // Index doesn't exist or already dropped — that's fine, ignore silently.
+    }
   } catch (e) {
     cached.promise = null;
     throw e;

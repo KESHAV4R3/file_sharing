@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Lock, User as UserIcon, Shield, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, User as UserIcon, Shield, ArrowRight, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
-export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void }) {
+export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void } = {}) {
   const { login, register } = useAuth();
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [username, setUsername] = useState('');
@@ -12,6 +12,7 @@ export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,13 +142,22 @@ export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void }
                 <Lock className="w-4 h-4" />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={isRegisterMode ? 'At least 6 characters' : 'Enter password'}
                 required
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+                className="w-full pl-10 pr-11 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -168,20 +178,12 @@ export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void }
         </form>
 
         {/* Security / In-Memory Notice */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center space-y-3">
-          <p className="text-xs text-slate-500 flex items-center justify-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-            Ephemeral Session: Auth state lives only in memory
+        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
+          <p className="text-xs text-slate-500 leading-relaxed">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 align-middle mr-1.5 -mt-0.5 shadow-sm shadow-emerald-500/50" />
+            <span className="font-medium text-slate-400">Private Session:</span>{' '}
+            Automatically logged out when you close or refresh this tab
           </p>
-          {/* Admin access link */}
-          <button
-            type="button"
-            onClick={onAdminClick}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-violet-400 transition-colors group"
-          >
-            <Shield className="w-3 h-3 group-hover:text-violet-400 transition-colors" />
-            Admin Login
-          </button>
         </div>
       </div>
     </div>

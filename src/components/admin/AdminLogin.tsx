@@ -103,6 +103,15 @@ export default function AdminLogin() {
               )}
               {loading ? 'Authenticating…' : 'Sign In'}
             </button>
+
+            <div className="text-center pt-2">
+              <a
+                href="/"
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1"
+              >
+                ← Back to App
+              </a>
+            </div>
           </form>
         </div>
       </div>

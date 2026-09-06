@@ -52,6 +52,24 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('Registration error:', error);
+
+    // MongoDB duplicate key error — username already taken
+    // (also catches the stale email_1 index case)
+    if (error?.code === 11000) {
+      const field = Object.keys(error?.keyPattern || {})[0];
+      if (field === 'username') {
+        return NextResponse.json(
+          { error: 'Username already exists. Please choose a different one.' },
+          { status: 409 }
+        );
+      }
+      // Stale email index or any other dup key — treat as username conflict
+      return NextResponse.json(
+        { error: 'Username already exists. Please choose a different one.' },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { error: error?.message || 'An error occurred during registration.' },
       { status: 500 }

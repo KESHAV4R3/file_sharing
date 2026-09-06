@@ -59,8 +59,14 @@ export default function AdminDashboard() {
           ))}
         </nav>
 
-        {/* Logout */}
-        <div className="px-3 pb-4 border-t border-slate-800/60 pt-4">
+        {/* Navigation & Logout */}
+        <div className="px-3 pb-4 border-t border-slate-800/60 pt-4 space-y-1">
+          <a
+            href="/"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all"
+          >
+            <span>←</span> Back to App
+          </a>
           <button
             onClick={adminLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
