@@ -4,6 +4,8 @@ export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   username: string;
   passwordHash: string;
+  canUploadVideo?: boolean;
+  unlimitedFileSize?: boolean;
   createdAt: Date;
 }
 
@@ -20,6 +22,14 @@ const UserSchema = new Schema<IUser>(
     passwordHash: {
       type: String,
       required: [true, 'Password hash is required'],
+    },
+    canUploadVideo: {
+      type: Boolean,
+      default: false,
+    },
+    unlimitedFileSize: {
+      type: Boolean,
+      default: false,
     },
     createdAt: {
       type: Date,

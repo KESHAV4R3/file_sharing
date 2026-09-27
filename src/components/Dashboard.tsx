@@ -1,24 +1,124 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import FileUpload from './FileUpload';
-import FileList from './FileList';
+import FilesManager from './FilesManager';
+import VideosManager from './VideosManager';
+import NotesManager from './NotesManager';
+import CodeFilesManager from './CodeFilesManager';
 import DocViewerModal, { DocFile } from './DocViewerModal';
-import { UploadCloud, BookOpen, LogOut, Shield, User as UserIcon } from 'lucide-react';
+import {
+  FolderOpen, FileText, Code2, LogOut, Shield,
+  User as UserIcon, AlertTriangle, X, Video,
+} from 'lucide-react';
+
+type Tab = 'files' | 'videos' | 'notes' | 'code';
+
+interface PendingAction {
+  type: 'tab';
+  tab: Tab;
+}
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'upload' | 'view'>('view');
+  const [activeTab, setActiveTab] = useState<Tab>('files');
   const [selectedFile, setSelectedFile] = useState<DocFile | null>(null);
-  const [refreshFileListKey, setRefreshFileListKey] = useState(0);
+
+  const handleSelectFile = useCallback((file: DocFile) => {
+    setSelectedFile(file);
+  }, []);
+
+  // Pending action waiting for user confirmation
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+
+  // Called when user clicks a tab while a file is open
+  const requestTabChange = useCallback(
+    (tab: Tab) => {
+      if (tab === activeTab) return; // already on this tab, nothing to do
+      if (selectedFile) {
+        // File is open — ask for confirmation first
+        setPendingAction({ type: 'tab', tab });
+      } else {
+        setActiveTab(tab);
+      }
+    },
+    [activeTab, selectedFile]
+  );
+
+  // User confirmed: close file and execute the pending action
+  const handleConfirmLeave = () => {
+    if (!pendingAction) return;
+    setSelectedFile(null);
+    if (pendingAction.type === 'tab') {
+      setActiveTab(pendingAction.tab);
+    }
+    setPendingAction(null);
+  };
+
+  // User cancelled: stay where they are
+  const handleCancelLeave = () => {
+    setPendingAction(null);
+  };
+
+  const isModalOpen = pendingAction !== null;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
-      {/* Top Navigation Bar */}
+
+      {/* ── "File Still Open" Confirmation Modal ─────────────────────────────── */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-amber-500/40 p-6 sm:p-7 rounded-2xl max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-150">
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4 mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            {/* Title */}
+            <h4 className="text-base sm:text-lg font-bold text-center text-white mb-1.5">
+              File is Currently Open
+            </h4>
+
+            {/* Body */}
+            <p className="text-xs sm:text-sm text-center text-slate-300 mb-1.5">
+              <span className="text-amber-300 font-semibold truncate max-w-[240px] inline-block align-bottom">
+                &ldquo;{selectedFile?.originalName}&rdquo;
+              </span>{' '}
+              is still open in the viewer.
+            </p>
+            <p className="text-xs text-center text-slate-400 mb-6">
+              Switching sections will close the file. Any unsaved annotations or highlights will be lost.
+            </p>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+              {/* Stay */}
+              <button
+                type="button"
+                onClick={handleCancelLeave}
+                className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-all text-center flex items-center justify-center gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                Stay Here
+              </button>
+
+              {/* Leave / close file and switch */}
+              <button
+                type="button"
+                onClick={handleConfirmLeave}
+                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold shadow-md shadow-amber-600/25 transition-all text-center"
+              >
+                Close File &amp; Switch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Top Navigation Bar ────────────────────────────────────────────────── */}
       <header
         className={`sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md transition-all duration-300 ${
-          selectedFile ? 'filter blur-sm pointer-events-none' : ''
+          selectedFile && !isModalOpen ? 'filter blur-sm pointer-events-none' : ''
         }`}
       >
         <div className="max-w-6xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
@@ -40,9 +140,9 @@ export default function Dashboard() {
             <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] sm:text-xs text-slate-300">
               <UserIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-400 shrink-0" />
               <span className="truncate max-w-[90px] sm:max-w-[140px]">{user?.username}</span>
-              {user?.username?.toLowerCase() === 'video' && (
+              {user?.canUploadVideo && (
                 <span className="px-1.5 py-0.5 rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shrink-0">
-                  Media Mode
+                  Video Access
                 </span>
               )}
             </div>
@@ -59,69 +159,87 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* ── Main Container ────────────────────────────────────────────────────── */}
       <main
         className={`flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 transition-all duration-300 ${
-          selectedFile ? 'filter blur-sm pointer-events-none' : ''
+          selectedFile && !isModalOpen ? 'filter blur-sm pointer-events-none' : ''
         }`}
       >
-        {/* EXACTLY TWO OPTIONS: Upload and View/Read */}
+        {/* Navigation Tabs */}
         <div className="flex justify-center mb-6 sm:mb-8">
-          <div className="inline-flex w-full sm:w-auto bg-slate-900/90 border border-slate-800 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl shadow-lg">
+          <div className="inline-flex flex-wrap w-full sm:w-auto bg-slate-900/90 border border-slate-800 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl shadow-lg gap-1">
             <button
               type="button"
-              onClick={() => setActiveTab('upload')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'upload'
+              onClick={() => requestTabChange('files')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'files'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <UploadCloud className="w-4 h-4" />
-              <span>Upload</span>
+              <FolderOpen className="w-4 h-4" />
+              <span>Files</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveTab('view')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'view'
+              onClick={() => requestTabChange('videos')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'videos'
+                  ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Video className="w-4 h-4" />
+              <span>Videos</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => requestTabChange('notes')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'notes'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <BookOpen className="w-4 h-4" />
-              <span>View / Read</span>
+              <FileText className="w-4 h-4" />
+              <span>Notes</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => requestTabChange('code')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'code'
+                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Code2 className="w-4 h-4" />
+              <span>Code Files</span>
             </button>
           </div>
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'upload' ? (
-          <FileUpload
-            onUploadSuccess={() => {
-              setActiveTab('view');
-              setRefreshFileListKey((prev) => prev + 1);
-            }}
-          />
+        {activeTab === 'files' ? (
+          <FilesManager onSelectFile={handleSelectFile} />
+        ) : activeTab === 'videos' ? (
+          <VideosManager onSelectFile={handleSelectFile} />
+        ) : activeTab === 'notes' ? (
+          <NotesManager />
         ) : (
-          <FileList
-            onSelectFile={(file) => setSelectedFile(file)}
-            onGoToUpload={() => setActiveTab('upload')}
-            refreshTrigger={refreshFileListKey}
-          />
+          <CodeFilesManager />
         )}
       </main>
 
-      {/* Document Viewer Modal */}
+      {/* ── Document Viewer Modal ─────────────────────────────────────────────── */}
       {selectedFile && (
         <DocViewerModal
           file={selectedFile}
           onClose={() => setSelectedFile(null)}
-          onDeleted={() => {
-            setSelectedFile(null);
-            setRefreshFileListKey((prev) => prev + 1);
-          }}
+          onDeleted={() => setSelectedFile(null)}
         />
       )}
     </div>

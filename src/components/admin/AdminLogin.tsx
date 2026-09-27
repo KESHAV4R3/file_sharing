@@ -38,19 +38,19 @@ export default function AdminLogin() {
                 <Shield className="w-7 h-7 text-violet-400" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Admin Portal</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Owner Portal</h1>
             <p className="text-sm text-slate-400 mt-1">DocReader — Control Center</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Admin ID */}
+            {/* Owner ID */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Admin ID</label>
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Owner ID</label>
               <input
                 type="text"
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                placeholder="Enter admin ID"
+                placeholder="Enter owner ID"
                 required
                 autoComplete="off"
                 className="w-full px-4 py-3 bg-slate-800/60 border border-slate-700 hover:border-slate-600 focus:border-violet-500 rounded-xl text-white placeholder-slate-500 text-sm outline-none transition-colors"

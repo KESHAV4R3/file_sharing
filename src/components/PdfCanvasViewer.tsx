@@ -58,7 +58,7 @@ function loadPdfJs(): Promise<any> {
   });
 }
 
-// Single Page Canvas Component
+// Single Page: Canvas + selectable Text Layer
 function SinglePdfPage({
   doc,
   pageInfo,
@@ -75,14 +75,16 @@ function SinglePdfPage({
   readerTheme: 'dark' | 'light';
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const [rendered, setRendered] = useState(false);
   const renderTaskRef = useRef<any>(null);
+  const textRenderTaskRef = useRef<any>(null);
 
-  // Compute CSS display dimensions
+  // CSS display dimensions
   const displayWidth = Math.round(baseWidth * (zoomLevel / 100));
   const displayHeight = Math.round((pageInfo.height / pageInfo.width) * displayWidth);
 
-  // High-DPI render scale for crisp text at all zoom levels
+  // High-DPI render scale
   const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
   const renderScale = Math.max(1.5, (baseWidth / pageInfo.width) * dpr * 1.5);
 
@@ -90,11 +92,13 @@ function SinglePdfPage({
     let isMounted = true;
 
     async function renderPage() {
-      if (!doc || !canvasRef.current) return;
+      if (!doc || !canvasRef.current || !textLayerRef.current) return;
 
       try {
-        if (renderTaskRef.current) {
-          renderTaskRef.current.cancel();
+        // Cancel any previous render
+        if (renderTaskRef.current) renderTaskRef.current.cancel();
+        if (textRenderTaskRef.current) {
+          try { textRenderTaskRef.current.cancel(); } catch { /* ignore */ }
         }
 
         const page = await doc.getPage(pageInfo.pageNum);
@@ -108,17 +112,41 @@ function SinglePdfPage({
         canvas.width = Math.round(viewport.width);
         canvas.height = Math.round(viewport.height);
 
-        const task = page.render({
-          canvasContext: ctx,
-          viewport: viewport,
+        // ── Render canvas ──
+        const renderTask = page.render({ canvasContext: ctx, viewport });
+        renderTaskRef.current = renderTask;
+        await renderTask.promise;
+
+        if (!isMounted) return;
+        setRendered(true);
+
+        // ── Render selectable text layer ──
+        const textContent = await page.getTextContent();
+        if (!isMounted || !textLayerRef.current) return;
+
+        const textDiv = textLayerRef.current;
+        textDiv.innerHTML = '';
+
+        const pdfjsLib = (window as any).pdfjsLib;
+        if (!pdfjsLib?.renderTextLayer) return;
+
+        // Use CSS display scale (not high-DPI canvas scale) for the text layer
+        // so spans are positioned at display pixel coordinates — no transform needed.
+        // PDF.js v3+ requires --scale-factor === viewport.scale on the container.
+        const textScale = displayWidth / pageInfo.width;
+        const textViewport = page.getViewport({ scale: textScale });
+
+        // Required by PDF.js v3+: set --scale-factor to match viewport.scale
+        textDiv.style.setProperty('--scale-factor', String(textScale));
+
+        const textRenderTask = pdfjsLib.renderTextLayer({
+          textContentSource: textContent,
+          container: textDiv,
+          viewport: textViewport,
+          textDivs: [],
         });
-
-        renderTaskRef.current = task;
-        await task.promise;
-
-        if (isMounted) {
-          setRendered(true);
-        }
+        textRenderTaskRef.current = textRenderTask;
+        await textRenderTask.promise;
       } catch (err: any) {
         if (err?.name !== 'RenderingCancelledException') {
           console.error(`Error rendering page ${pageInfo.pageNum}:`, err);
@@ -130,35 +158,42 @@ function SinglePdfPage({
 
     return () => {
       isMounted = false;
-      if (renderTaskRef.current) {
-        renderTaskRef.current.cancel();
+      if (renderTaskRef.current) renderTaskRef.current.cancel();
+      if (textRenderTaskRef.current) {
+        try { textRenderTaskRef.current.cancel(); } catch { /* ignore */ }
       }
     };
   }, [doc, pageInfo.pageNum, renderScale]);
 
   return (
     <div
-      className="flex flex-col items-center shrink-0 select-none"
-      style={{
-        width: `${displayWidth}px`,
-        transition: 'width 0.15s ease-out',
-      }}
+      className="flex flex-col items-center shrink-0"
+      style={{ width: `${displayWidth}px`, transition: 'width 0.15s ease-out' }}
     >
       <div
         className={`relative rounded-lg shadow-xl overflow-hidden border transition-all ${
           readerTheme === 'dark' ? 'border-slate-800 bg-white' : 'border-slate-300 bg-white'
         }`}
-        style={{
-          width: `${displayWidth}px`,
-          height: `${displayHeight}px`,
-        }}
+        style={{ width: `${displayWidth}px`, height: `${displayHeight}px` }}
       >
+        {/* Canvas layer — high-DPI render */}
         <canvas
           ref={canvasRef}
+          style={{ width: `${displayWidth}px`, height: `${displayHeight}px`, display: 'block' }}
+        />
+
+        {/* Selectable text layer — same CSS dimensions as canvas, no transform.
+            Spans are positioned at display-pixel coordinates (textScale = displayWidth/pageWidth).
+            --scale-factor is set inline via JS after render to satisfy PDF.js v3+ requirement. */}
+        <div
+          ref={textLayerRef}
+          className="pdf-text-layer"
           style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
             width: `${displayWidth}px`,
             height: `${displayHeight}px`,
-            display: 'block',
           }}
         />
 
@@ -198,12 +233,10 @@ export default function PdfCanvasViewer({
       if (containerRef.current) {
         const w = containerRef.current.clientWidth;
         if (w > 0) {
-          // Leave comfortable margin on sides
           setMeasuredWidth(Math.max(300, Math.min(850, w - (w < 640 ? 16 : 48))));
         }
       }
     }
-
     updateWidth();
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
@@ -240,11 +273,7 @@ export default function PdfCanvasViewer({
       for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
         const vp = page.getViewport({ scale: 1 });
-        pageList.push({
-          pageNum: i,
-          width: vp.width,
-          height: vp.height,
-        });
+        pageList.push({ pageNum: i, width: vp.width, height: vp.height });
       }
       setPages(pageList);
     } catch (err: any) {
@@ -258,9 +287,7 @@ export default function PdfCanvasViewer({
   useEffect(() => {
     loadDocument();
     return () => {
-      if (rawBlobUrl) {
-        URL.revokeObjectURL(rawBlobUrl);
-      }
+      if (rawBlobUrl) URL.revokeObjectURL(rawBlobUrl);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileId]);

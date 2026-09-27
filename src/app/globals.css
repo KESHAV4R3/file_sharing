@@ -92,3 +92,34 @@ body {
   background: rgba(99, 102, 241, 0.75);
 }
 
+/* ─── PDF.js Selectable Text Layer ──────────────────────────────────────────
+   Spans injected by pdfjsLib.renderTextLayer() must be absolutely positioned
+   with transparent fill so they sit invisibly over the canvas but remain
+   selectable / copyable by the user.
+   ─────────────────────────────────────────────────────────────────────────── */
+.pdf-text-layer {
+  pointer-events: auto;
+  cursor: text;
+  color: transparent;
+  overflow: hidden;
+}
+
+.pdf-text-layer span,
+.pdf-text-layer br {
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  color: transparent;
+  transform-origin: 0% 0%;
+}
+
+/* Selection highlight — indigo tint over canvas */
+.pdf-text-layer ::selection {
+  background: rgba(99, 102, 241, 0.35);
+  color: transparent;
+}
+
+.pdf-text-layer ::-moz-selection {
+  background: rgba(99, 102, 241, 0.35);
+  color: transparent;
+}

@@ -30,11 +30,14 @@ export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void }
       const res = await register(username, password);
       setLoading(false);
       if (res.success) {
-        setSuccessMsg(res.message || 'Account created! You can now log in.');
+        setSuccessMsg(
+          res.message ||
+            'Registration request submitted! Your account is pending administrator approval before you can log in.'
+        );
         setIsRegisterMode(false);
         setPassword('');
       } else {
-        setError(res.error || 'Failed to create account.');
+        setError(res.error || 'Failed to submit registration request.');
       }
     } else {
       const res = await login(username, password);
@@ -170,7 +173,7 @@ export default function AuthCard({ onAdminClick }: { onAdminClick?: () => void }
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                <span>{isRegisterMode ? 'Create Account' : 'Sign In'}</span>
+                <span>{isRegisterMode ? 'Submit for Approval' : 'Sign In'}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

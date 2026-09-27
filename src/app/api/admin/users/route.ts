@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
       return {
         id: u._id.toString(),
         username: u.username,
+        canUploadVideo: u.canUploadVideo ?? false,
+        unlimitedFileSize: u.unlimitedFileSize ?? false,
         createdAt: u.createdAt,
         fileCount,
         totalStorage: storageAgg[0]?.total ?? 0,

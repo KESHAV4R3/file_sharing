@@ -57,13 +57,15 @@ export async function GET(
 
     await connectToDatabase();
 
-    const file = await FileModel.findOne({
-      _id: new mongoose.Types.ObjectId(id),
-      userId: new mongoose.Types.ObjectId(authUser.userId),
-    }).lean();
+    const file = await FileModel.findById(id).lean();
 
     if (!file) {
-      return NextResponse.json({ error: 'File not found or access denied.' }, { status: 404 });
+      return NextResponse.json({ error: 'File not found.' }, { status: 404 });
+    }
+
+    const isMedia = (file as any).fileType === 'video' || (file as any).fileType === 'audio';
+    if (!isMedia && (file as any).userId.toString() !== authUser.userId) {
+      return NextResponse.json({ error: 'Access denied.' }, { status: 403 });
     }
 
     const cloudinaryUrl: string = (file as any).cloudinaryUrl;

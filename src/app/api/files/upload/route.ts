@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import FileModel, { FileType } from '@/lib/models/File';
+import UserModel from '@/lib/models/User';
 import { getAuthUser } from '@/lib/auth';
 import { uploadBufferToCloudinary } from '@/lib/cloudinary';
 import mongoose from 'mongoose';
@@ -76,26 +77,85 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only the dedicated media account ("video") is authorized to upload audio and video
-    const isMediaAccount = authUser.username?.toLowerCase() === 'video';
-    if (!isMediaAccount && (fileType === 'video' || fileType === 'audio')) {
-      return NextResponse.json(
-        {
-          error: 'Audio and video uploads are restricted to the dedicated media account ("video"). Please log in to the "video" account to upload media files.',
-        },
-        { status: 403 }
-      );
+    await connectToDatabase();
+
+    const dbUser = await UserModel.findById(authUser.userId).lean();
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+    }
+
+    const canUploadVideo = (dbUser as any)?.canUploadVideo === true;
+    const unlimitedFileSize = (dbUser as any)?.unlimitedFileSize === true;
+
+    // Video/media upload requires permission granted by owner/admin
+    if (fileType === 'video' || fileType === 'audio') {
+      if (!canUploadVideo) {
+        return NextResponse.json(
+          {
+            error: 'You do not have permission to upload video files. Please contact the owner or administrator to grant you video upload access.',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Check total account storage quota
+    const { getMaxAccountStorageMb, getMaxAccountStorageBytes } = await import('@/lib/storageConfig');
+    const maxAccountStorageMb = getMaxAccountStorageMb();
+    const maxAccountStorageBytes = getMaxAccountStorageBytes();
+
+    const userObjectId = new mongoose.Types.ObjectId(authUser.userId);
+    const storageAgg = await FileModel.aggregate([
+      { $match: { userId: userObjectId } },
+      { $group: { _id: null, total: { $sum: '$fileSize' } } },
+    ]);
+    const currentStorage = storageAgg[0]?.total ?? 0;
+    const reportedSize = file.size || 0;
+
+    // ACCOUNT STORAGE QUOTA ENFORCEMENT:
+    // If unlimitedFileSize is FALSE: total storage for this account cannot exceed MAX_ACCOUNT_STORAGE_MB (default 50MB from env).
+    // If unlimitedFileSize is TRUE: unlimited storage — any number of any size of files and videos allowed!
+    if (!unlimitedFileSize) {
+      if (currentStorage >= maxAccountStorageBytes) {
+        return NextResponse.json(
+          {
+            error: `Account storage limit reached! Your account has reached the ${maxAccountStorageMb}MB total storage cap (${(currentStorage / (1024 * 1024)).toFixed(1)}MB used). You cannot upload any more files. Please delete existing files or contact the administrator to enable unlimited storage.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (currentStorage + reportedSize > maxAccountStorageBytes) {
+        const remainingMb = Math.max(0, (maxAccountStorageBytes - currentStorage) / (1024 * 1024)).toFixed(1);
+        return NextResponse.json(
+          {
+            error: `Total account storage limit (${maxAccountStorageMb}MB) exceeded! Currently used: ${(currentStorage / (1024 * 1024)).toFixed(1)}MB. File size: ${(reportedSize / (1024 * 1024)).toFixed(1)}MB. Remaining available storage: ${remainingMb}MB. Please delete some files or contact the administrator to enable unlimited storage.`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Convert file to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const fileSize = file.size || buffer.length || 0;
+    const fileSize = reportedSize || buffer.length || 0;
+
+    // Secondary verify on actual buffer length
+    if (!unlimitedFileSize) {
+      if (currentStorage + buffer.length > maxAccountStorageBytes) {
+        const remainingMb = Math.max(0, (maxAccountStorageBytes - currentStorage) / (1024 * 1024)).toFixed(1);
+        return NextResponse.json(
+          {
+            error: `Total account storage limit (${maxAccountStorageMb}MB) exceeded! Currently used: ${(currentStorage / (1024 * 1024)).toFixed(1)}MB. File size: ${(buffer.length / (1024 * 1024)).toFixed(1)}MB. Remaining available storage: ${remainingMb}MB. Please delete some files or contact the administrator to enable unlimited storage.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // Compute SHA-256 hash of file content to detect duplicate documents
     const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
-
-    await connectToDatabase();
 
     // Check if an identical document already exists in the user's account:
     // Matches by content hash (identical file contents) OR by same filename + size

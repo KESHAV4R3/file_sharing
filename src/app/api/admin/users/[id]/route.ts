@@ -30,6 +30,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     user: {
       id: (user as any)._id.toString(),
       username: (user as any).username,
+      canUploadVideo: (user as any).canUploadVideo ?? false,
+      unlimitedFileSize: (user as any).unlimitedFileSize ?? false,
       createdAt: (user as any).createdAt,
     },
     files: files.map((f: any) => ({
@@ -52,10 +54,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
 
   const body = await request.json();
-  const update: Record<string, string> = {};
+  const update: Record<string, any> = {};
 
   if (body.username) update.username = body.username.trim();
   if (body.password) update.passwordHash = await hashPassword(body.password);
+  if (typeof body.canUploadVideo === 'boolean') update.canUploadVideo = body.canUploadVideo;
+  if (typeof body.unlimitedFileSize === 'boolean') update.unlimitedFileSize = body.unlimitedFileSize;
 
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
@@ -67,7 +71,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     message: 'User updated.',
-    user: { id: (updated as any)._id.toString(), username: (updated as any).username },
+    user: {
+      id: (updated as any)._id.toString(),
+      username: (updated as any).username,
+      canUploadVideo: (updated as any).canUploadVideo ?? false,
+      unlimitedFileSize: (updated as any).unlimitedFileSize ?? false,
+    },
   });
 }
 

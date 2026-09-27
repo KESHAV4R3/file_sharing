@@ -71,6 +71,19 @@ function VideoPlayerView({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLooping, setIsLooping] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+
+  // CRITICAL: Ensure video audio is unmuted and volume is 1 on mount/url change
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.defaultMuted = false;
+      videoRef.current.volume = 1;
+      setIsMuted(false);
+      setVolume(1);
+    }
+  }, [url]);
 
   const handleSpeedChange = (speed: number) => {
     setPlaybackRate(speed);
@@ -83,6 +96,28 @@ function VideoPlayerView({
     if (videoRef.current) {
       videoRef.current.loop = !isLooping;
       setIsLooping(!isLooping);
+    }
+  };
+
+  const toggleMute = () => {
+    if (!videoRef.current) return;
+    const nextMuted = !isMuted;
+    videoRef.current.muted = nextMuted;
+    setIsMuted(nextMuted);
+    if (!nextMuted && videoRef.current.volume === 0) {
+      videoRef.current.volume = 1;
+      setVolume(1);
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    const muted = val === 0;
+    setIsMuted(muted);
+    if (videoRef.current) {
+      videoRef.current.volume = val;
+      videoRef.current.muted = muted;
     }
   };
 
@@ -114,7 +149,20 @@ function VideoPlayerView({
             src={url}
             controls
             playsInline
-            preload="metadata"
+            preload="auto"
+            onLoadedMetadata={() => {
+              if (videoRef.current) {
+                videoRef.current.muted = false;
+                videoRef.current.defaultMuted = false;
+                videoRef.current.volume = volume;
+              }
+            }}
+            onVolumeChange={() => {
+              if (videoRef.current) {
+                setIsMuted(videoRef.current.muted || videoRef.current.volume === 0);
+                setVolume(videoRef.current.volume);
+              }
+            }}
             className="w-full max-h-[70vh] object-contain rounded-t-xl"
           >
             Your browser does not support video playback.
@@ -148,6 +196,40 @@ function VideoPlayerView({
                 {spd}x
               </button>
             ))}
+          </div>
+
+          {/* Volume / Audio Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleMute}
+              title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+              className={`px-2 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                isMuted
+                  ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                  : theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700 text-indigo-400 hover:text-white'
+                  : 'bg-slate-200 border-slate-300 text-indigo-600 hover:text-black'
+              }`}
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-4 h-4 text-rose-400" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-indigo-400" />
+              )}
+              <span className="text-xs font-semibold">{isMuted ? 'Muted' : `${Math.round(volume * 100)}%`}</span>
+            </button>
+
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={isMuted ? 0 : volume}
+              onChange={handleVolumeChange}
+              className="w-16 sm:w-20 h-1.5 accent-indigo-500 bg-slate-700 rounded-lg cursor-pointer"
+              title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
+            />
           </div>
 
           <div className="flex items-center gap-2">
@@ -270,14 +352,32 @@ function AudioPlayerView({
     }
   };
 
+  // Ensure audio is unmuted on mount and url change
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = false;
+      audioRef.current.defaultMuted = false;
+      audioRef.current.volume = 1;
+      setIsMuted(false);
+      setVolume(1);
+    }
+  }, [url]);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-full p-4 sm:p-8 max-w-xl mx-auto w-full my-auto">
       <audio
         ref={audioRef}
         src={url}
-        preload="metadata"
+        preload="auto"
         onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
-        onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
+        onLoadedMetadata={() => {
+          if (audioRef.current) {
+            audioRef.current.muted = false;
+            audioRef.current.defaultMuted = false;
+            audioRef.current.volume = volume;
+            setDuration(audioRef.current.duration);
+          }
+        }}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}

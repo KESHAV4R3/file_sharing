@@ -5,6 +5,7 @@ import {
   ArrowLeft, User, FileText, Trash2, Edit2, Save, X,
   Key, AlertTriangle, CheckCircle2, File as FileIcon,
   FileImage, FileSpreadsheet, FileCode, Eye, Video, Music,
+  Infinity as InfinityIcon,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 
@@ -27,7 +28,7 @@ function FileTypeIcon({ type }: { type: string }) {
 }
 
 interface FileEntry { id: string; originalName: string; fileType: string; fileSize: number; cloudinaryUrl: string; uploadedAt: string; }
-interface UserInfo   { id: string; username: string; createdAt: string; }
+interface UserInfo   { id: string; username: string; canUploadVideo?: boolean; unlimitedFileSize?: boolean; createdAt: string; }
 
 export default function UserDetail({
   userId,
@@ -50,11 +51,69 @@ export default function UserDetail({
   const [editingPw, setEditingPw]       = useState(false);
   const [saving, setSaving]             = useState(false);
   const [saveMsg, setSaveMsg]           = useState<string | null>(null);
+  const [togglingVideo, setTogglingVideo] = useState(false);
+  const [togglingSize, setTogglingSize]   = useState(false);
 
   // Delete states
   const [deletingFile, setDeletingFile]   = useState<string | null>(null);
   const [deletingUser, setDeletingUser]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const toggleVideoAccess = async () => {
+    if (!user) return;
+    setTogglingVideo(true);
+    const newStatus = !user.canUploadVideo;
+    try {
+      const res = await fetchAsAdmin(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canUploadVideo: newStatus }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUser((u) => (u ? { ...u, canUploadVideo: newStatus } : u));
+        setSaveMsg(newStatus ? '✅ Video & media upload access granted.' : 'ℹ️ Video & media upload access revoked.');
+        onRefreshStats();
+      } else {
+        setSaveMsg(`❌ ${data.error || 'Failed to update access.'}`);
+      }
+    } catch {
+      setSaveMsg('❌ Network error updating video permission.');
+    } finally {
+      setTogglingVideo(false);
+      setTimeout(() => setSaveMsg(null), 3500);
+    }
+  };
+
+  const toggleUnlimitedSize = async () => {
+    if (!user) return;
+    setTogglingSize(true);
+    const newStatus = !user.unlimitedFileSize;
+    try {
+      const res = await fetchAsAdmin(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unlimitedFileSize: newStatus }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUser((u) => (u ? { ...u, unlimitedFileSize: newStatus } : u));
+        setSaveMsg(
+          newStatus
+            ? '✅ File size limit removed (unlimited size allowed).'
+            : 'ℹ️ Default file size limits enforced (15MB docs / 100MB videos).'
+        );
+        onRefreshStats();
+      } else {
+        setSaveMsg(`❌ ${data.error || 'Failed to update file size limit.'}`);
+      }
+    } catch {
+      setSaveMsg('❌ Network error updating file size limit setting.');
+    } finally {
+      setTogglingSize(false);
+      setTimeout(() => setSaveMsg(null), 3500);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -201,6 +260,134 @@ export default function UserDetail({
           ) : (
             <p className="text-slate-500 text-sm bg-slate-800/50 rounded-lg px-3 py-2">••••••••</p>
           )}
+        </div>
+
+        {/* Video & Media Access Permission */}
+        <div className="pt-2">
+          <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                  user?.canUploadVideo
+                    ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}
+              >
+                <Video className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-white">Video Upload Access</p>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      user?.canUploadVideo
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {user?.canUploadVideo ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {user?.canUploadVideo
+                    ? 'User is authorized to upload and view video & audio files (up to 100MB).'
+                    : 'User can only view/play existing uploaded media; cannot upload new videos.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleVideoAccess}
+              disabled={togglingVideo}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 shrink-0 ${
+                user?.canUploadVideo
+                  ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30'
+                  : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20'
+              }`}
+            >
+              {togglingVideo ? (
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : user?.canUploadVideo ? (
+                <>
+                  <X className="w-3.5 h-3.5" />
+                  <span>Revoke Video Access</span>
+                </>
+              ) : (
+                <>
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Grant Video Access</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* File Size Limit Permission */}
+        <div className="pt-2">
+          <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                  user?.unlimitedFileSize
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}
+              >
+                <InfinityIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-white">Account Storage Quota</p>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      user?.unlimitedFileSize
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {user?.unlimitedFileSize ? 'Unlimited Storage' : `Capped (${process.env.NEXT_PUBLIC_MAX_ACCOUNT_STORAGE_MB || 50}MB Total)`}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {user?.unlimitedFileSize
+                    ? 'Unlimited storage is enabled. User can upload any number of files & videos of any size without restriction.'
+                    : `Account storage is strictly capped at ${process.env.NEXT_PUBLIC_MAX_ACCOUNT_STORAGE_MB || 50}MB total across all files.`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleUnlimitedSize}
+              disabled={togglingSize}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 shrink-0 ${
+                user?.unlimitedFileSize
+                  ? 'bg-slate-700/60 hover:bg-slate-700 text-slate-200 border border-slate-600'
+                  : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-600/20'
+              }`}
+            >
+              {togglingSize ? (
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : user?.unlimitedFileSize ? (
+                <>
+                  <X className="w-3.5 h-3.5" />
+                  <span>Enforce {process.env.NEXT_PUBLIC_MAX_ACCOUNT_STORAGE_MB || 50}MB Quota</span>
+                </>
+              ) : (
+                <>
+                  <InfinityIcon className="w-3.5 h-3.5" />
+                  <span>Enable Unlimited Storage</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         <p className="text-xs text-slate-600">Joined: {user?.createdAt ? new Date(user.createdAt).toLocaleString() : '—'}</p>

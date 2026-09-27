@@ -20,26 +20,31 @@ export async function POST(request: NextRequest) {
     const normalizedUsername = username.trim().toLowerCase();
     let user = await User.findOne({ username: normalizedUsername });
 
-    // Auto-ensure dedicated media account (@video) with video@123
-    if (normalizedUsername === 'video' && password === 'video@123') {
-      if (!user) {
-        const passwordHash = await hashPassword('video@123');
-        user = await User.create({
-          username: 'video',
-          passwordHash,
-          createdAt: new Date(),
-        });
-      } else {
-        const isMatch = await comparePassword(password, user.passwordHash);
-        if (!isMatch) {
-          const passwordHash = await hashPassword('video@123');
-          user.passwordHash = passwordHash;
-          await user.save();
-        }
-      }
-    }
-
     if (!user) {
+      // Check if there is an unapproved registration request
+      const RegistrationRequest = (await import('@/lib/models/RegistrationRequest')).default;
+      const regReq = await RegistrationRequest.findOne({ username: normalizedUsername });
+
+      if (regReq && regReq.status === 'pending') {
+        return NextResponse.json(
+          {
+            error:
+              'Your registration request is pending administrator approval. Please wait for the owner/admin to approve your account before signing in.',
+          },
+          { status: 403 }
+        );
+      }
+
+      if (regReq && regReq.status === 'rejected') {
+        return NextResponse.json(
+          {
+            error:
+              'Your registration request was declined by the administrator. Please contact the owner or register again.',
+          },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json(
         { error: 'Invalid username or password.' },
         { status: 401 }
@@ -64,6 +69,8 @@ export async function POST(request: NextRequest) {
       user: {
         id: user._id.toString(),
         username: user.username,
+        canUploadVideo: user.canUploadVideo ?? false,
+        unlimitedFileSize: user.unlimitedFileSize ?? false,
       },
     });
   } catch (error: any) {

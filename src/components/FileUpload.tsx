@@ -49,7 +49,7 @@ const MEDIA_EXTENSIONS = [
 
 export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
   const { user, fetchWithAuth } = useAuth();
-  const isMediaAccount = user?.username?.toLowerCase() === 'video';
+  const canUploadVideo = user?.canUploadVideo === true;
 
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -71,9 +71,9 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
       file.type.startsWith('audio/');
 
     // Check if account is authorized for media
-    if (isMediaFile && !isMediaAccount) {
+    if (isMediaFile && !canUploadVideo) {
       setError(
-        'Audio and video uploads are restricted to the dedicated media account ("video"). Please log in with username "video" (password: video@123) to upload audio and video.'
+        'Video and audio uploads are restricted. Please contact the administrator/owner for access.'
       );
       setSelectedFile(null);
       return;
@@ -85,7 +85,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
 
     if (!isDocFile && !isMediaFile) {
       setError(
-        isMediaAccount
+        canUploadVideo
           ? 'Invalid file type. Supported formats: Documents (PDF, TXT, HTML, CSV), Images, Video, and Audio.'
           : 'Invalid file type. Supported formats: PDF, TXT, HTML, CSV, and Images.'
       );
@@ -93,10 +93,10 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
       return;
     }
 
-    // Size limit: 100MB for media on video account, 25MB for regular documents
-    const maxSize = isMediaAccount ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
+    // Size limit: 100MB for media on authorized account, 25MB for regular documents
+    const maxSize = canUploadVideo ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
     if (file.size > maxSize) {
-      setError(`File size exceeds the ${isMediaAccount ? '100MB' : '25MB'} limit.`);
+      setError(`File size exceeds the ${canUploadVideo ? '100MB' : '25MB'} limit.`);
       setSelectedFile(null);
       return;
     }
@@ -178,18 +178,18 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
         <div className="mb-5 sm:mb-6">
           <div className="flex items-center gap-2">
             <h2 className="text-lg sm:text-xl font-semibold text-white">
-              {isMediaAccount ? 'Upload File (Media Account)' : 'Upload New Document'}
+              {canUploadVideo ? 'Upload File (Video Enabled)' : 'Upload New Document'}
             </h2>
-            {isMediaAccount && (
+            {canUploadVideo && (
               <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[10px] font-bold uppercase tracking-wider">
                 Video & Audio Active
               </span>
             )}
           </div>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {isMediaAccount
+            {canUploadVideo
               ? 'Store documents, images, audio, and video securely on Cloudinary CDN.'
-              : 'Store documents and images securely on Cloudinary CDN. (Audio & Video upload is exclusive to the @video account)'}
+              : 'Store documents and images securely on Cloudinary CDN.'}
           </p>
         </div>
 
@@ -260,7 +260,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
             ref={fileInputRef}
             onChange={handleFileChange}
             accept={
-              isMediaAccount
+              canUploadVideo
                 ? '.txt,.html,.htm,.pdf,.csv,image/*,video/*,audio/*'
                 : '.txt,.html,.htm,.pdf,.csv,image/*'
             }
@@ -275,9 +275,9 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
               Drag & drop your file here, or <span className="text-indigo-400 underline">browse</span>
             </p>
             <p className="text-[11px] sm:text-xs text-slate-500 max-w-sm">
-              {isMediaAccount
+              {canUploadVideo
                 ? 'Supports Documents, Images, Audio, and Video (up to 100MB)'
-                : 'Supports .pdf, .txt, .csv, .html, and images (up to 25MB). Video & Audio on @video account.'}
+                : 'Supports .pdf, .txt, .csv, .html, and images (up to 25MB).'}
             </p>
           </div>
         </div>

@@ -5,25 +5,33 @@ export async function POST(request: NextRequest) {
   try {
     const { adminId, password } = await request.json();
 
-    const expectedId = process.env.ADMIN_ID;
-    const expectedPassword = process.env.ADMIN_PASSWORD;
+    const ownerId = process.env.OWNER_ID;
+    const ownerPassword = process.env.OWNER_PASSWORD;
+    const adminIdEnv = process.env.ADMIN_ID;
+    const adminPasswordEnv = process.env.ADMIN_PASSWORD;
 
-    if (!expectedId || !expectedPassword) {
+    if (!ownerId && !adminIdEnv) {
       return NextResponse.json(
-        { error: 'Admin credentials not configured.' },
+        { error: 'Owner/Admin credentials not configured in environment.' },
         { status: 500 }
       );
     }
 
-    if (adminId !== expectedId || password !== expectedPassword) {
+    const inputId = (adminId || '').trim();
+    const isOwnerMatch =
+      Boolean(ownerId && ownerPassword && inputId === ownerId && password === ownerPassword);
+    const isAdminMatch =
+      Boolean(adminIdEnv && adminPasswordEnv && inputId === adminIdEnv && password === adminPasswordEnv);
+
+    if (!isOwnerMatch && !isAdminMatch) {
       return NextResponse.json(
-        { error: 'Invalid admin credentials.' },
+        { error: 'Invalid owner credentials.' },
         { status: 401 }
       );
     }
 
-    const token = signAdminToken(adminId);
-    return NextResponse.json({ token, adminId });
+    const token = signAdminToken(inputId);
+    return NextResponse.json({ token, adminId: inputId });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || 'Login failed.' },

@@ -1,10 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 
 export interface User {
   id: string;
   username: string;
+  canUploadVideo?: boolean;
+  unlimitedFileSize?: boolean;
 }
 
 interface AuthContextType {
@@ -25,7 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  const login = async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -44,14 +46,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       return { success: false, error: 'Network error during login.' };
     }
-  };
+  }, []);
 
-  const register = async (username: string, password: string) => {
+  const register = useCallback(async (username: string, password: string) => {
     try {
+      let clientTelemetry: Record<string, any> = {};
+      if (typeof window !== 'undefined') {
+        try {
+          clientTelemetry = {
+            screenResolution: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
+            language: navigator.language || '',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+            platform: (navigator as any).userAgentData?.platform || navigator.platform || '',
+            cpuCores: navigator.hardwareConcurrency || '',
+            deviceMemory: (navigator as any).deviceMemory ? `${(navigator as any).deviceMemory} GB` : '',
+          };
+        } catch {
+          // ignore client telemetry read errors
+        }
+      }
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          ...clientTelemetry,
+        }),
       });
 
       const data = await res.json();
@@ -63,36 +85,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       return { success: false, error: 'Network error during registration.' };
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
-  };
+  }, []);
 
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    const headers = new Headers(options.headers || {});
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-    return fetch(url, {
-      ...options,
-      headers,
-    });
-  };
+  const fetchWithAuth = useCallback(
+    async (url: string, options: RequestInit = {}) => {
+      const headers = new Headers(options.headers || {});
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return fetch(url, {
+        ...options,
+        headers,
+      });
+    },
+    [token]
+  );
+
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      isAuthenticated: !!token && !!user,
+      login,
+      register,
+      logout,
+      fetchWithAuth,
+    }),
+    [user, token, login, register, logout, fetchWithAuth]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!token && !!user,
-        login,
-        register,
-        logout,
-        fetchWithAuth,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

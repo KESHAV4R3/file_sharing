@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import FileModel from '@/lib/models/File';
+import UserModel from '@/lib/models/User';
 import { getAuthUser } from '@/lib/auth';
 import { deleteFromCloudinary } from '@/lib/cloudinary';
 import mongoose from 'mongoose';
@@ -29,15 +30,20 @@ export async function GET(
 
     await connectToDatabase();
 
-    const file = await FileModel.findOne({
-      _id: new mongoose.Types.ObjectId(id),
-      userId: new mongoose.Types.ObjectId(authUser.userId),
-    }).lean();
+    const file = await FileModel.findById(id).lean();
 
     if (!file) {
       return NextResponse.json(
-        { error: 'File not found or access denied.' },
+        { error: 'File not found.' },
         { status: 404 }
+      );
+    }
+
+    const isMedia = file.fileType === 'video' || file.fileType === 'audio';
+    if (!isMedia && (file as any).userId.toString() !== authUser.userId) {
+      return NextResponse.json(
+        { error: 'Access denied.' },
+        { status: 403 }
       );
     }
 
@@ -84,16 +90,34 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const file = await FileModel.findOne({
-      _id: new mongoose.Types.ObjectId(id),
-      userId: new mongoose.Types.ObjectId(authUser.userId),
-    });
+    const file = await FileModel.findById(id);
 
     if (!file) {
       return NextResponse.json(
-        { error: 'File not found or access denied.' },
+        { error: 'File not found.' },
         { status: 404 }
       );
+    }
+
+    const isVideo = file.fileType === 'video' || file.fileType === 'audio';
+    if (isVideo) {
+      // Deleting a video requires permission from admin
+      const dbUser = await UserModel.findById(authUser.userId).lean();
+      const canUploadVideo = (dbUser as any)?.canUploadVideo === true;
+
+      if (!canUploadVideo) {
+        return NextResponse.json(
+          { error: 'You do not have permission to delete videos. Admin permission is required.' },
+          { status: 403 }
+        );
+      }
+    } else {
+      if (file.userId.toString() !== authUser.userId) {
+        return NextResponse.json(
+          { error: 'Access denied.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Delete asset from Cloudinary
