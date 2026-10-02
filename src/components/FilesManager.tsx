@@ -25,7 +25,9 @@ import {
   AlertCircle,
   ArrowUpRight,
   HardDrive,
+  Download,
 } from 'lucide-react';
+import { downloadFile } from '@/lib/downloadHelper';
 
 interface FilesManagerProps {
   onSelectFile: (file: DocFile) => void;
@@ -45,7 +47,7 @@ interface StorageInfo {
   isUnlimited: boolean;
 }
 
-const DOC_EXTENSIONS = ['.txt', '.html', '.htm', '.pdf', '.csv', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
+const DOC_EXTENSIONS = ['.txt', '.html', '.htm', '.pdf', '.csv', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
 const MEDIA_EXTENSIONS = ['.mp4', '.webm', '.mov', '.mkv', '.avi', '.m4v', '.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'];
 
 export default function FilesManager({ onSelectFile }: FilesManagerProps) {
@@ -59,6 +61,7 @@ export default function FilesManager({ onSelectFile }: FilesManagerProps) {
   const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Upload state
   const [dragOver, setDragOver] = useState(false);
@@ -131,7 +134,7 @@ export default function FilesManager({ onSelectFile }: FilesManagerProps) {
       DOC_EXTENSIONS.some((ext) => fileName.endsWith(ext)) || file.type.startsWith('image/');
 
     if (!isDocFile) {
-      setUploadError('Invalid file type. Supported: PDF, TXT, HTML, CSV, and Images.');
+      setUploadError('Invalid file type. Supported: PDF, TXT, HTML, CSV, Excel (.xlsx, .xls), and Images.');
       setSelectedFile(null);
       return;
     }
@@ -247,6 +250,7 @@ export default function FilesManager({ onSelectFile }: FilesManagerProps) {
       case 'image': return <FileImage className="w-5 h-5 text-emerald-400" />;
       case 'txt':   return <FileText className="w-5 h-5 text-blue-400" />;
       case 'csv':   return <FileSpreadsheet className="w-5 h-5 text-amber-400" />;
+      case 'excel': return <FileSpreadsheet className="w-5 h-5 text-emerald-400" />;
       case 'html':  return <FileCode className="w-5 h-5 text-purple-400" />;
       default:      return <FileIcon className="w-5 h-5 text-slate-400" />;
     }
@@ -255,7 +259,8 @@ export default function FilesManager({ onSelectFile }: FilesManagerProps) {
   const getFileTypeBadge = (type: string) => {
     const colorMap: Record<string, string> = {
       video: 'text-violet-400', audio: 'text-cyan-400', pdf: 'text-rose-400',
-      image: 'text-emerald-400', txt: 'text-blue-400', csv: 'text-amber-400', html: 'text-purple-400',
+      image: 'text-emerald-400', txt: 'text-blue-400', csv: 'text-amber-400',
+      excel: 'text-emerald-400 font-bold', html: 'text-purple-400',
     };
     const color = colorMap[type] ?? 'text-slate-400';
     return <span className={`text-[11px] font-semibold uppercase ${color}`}>{type}</span>;
@@ -278,7 +283,7 @@ export default function FilesManager({ onSelectFile }: FilesManagerProps) {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".txt,.html,.htm,.pdf,.csv,image/*"
+        accept=".txt,.html,.htm,.pdf,.csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,image/*"
         className="hidden"
       />
 
@@ -539,6 +544,30 @@ export default function FilesManager({ onSelectFile }: FilesManagerProps) {
                         <Eye className="w-3.5 h-3.5" />
                       )}
                       <span>{file.fileType === 'video' || file.fileType === 'audio' ? 'Play' : 'View / Read'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      title="Download file"
+                      disabled={downloadingId === file.id}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          setDownloadingId(file.id);
+                          await downloadFile(file, fetchWithAuth);
+                        } catch (err) {
+                          console.error('Download error:', err);
+                        } finally {
+                          setDownloadingId(null);
+                        }
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 border border-slate-700/60 hover:border-emerald-500/30 transition-all flex items-center justify-center disabled:opacity-50"
+                    >
+                      {downloadingId === file.id ? (
+                        <div className="w-3.5 h-3.5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
                     </button>
 
                     <button

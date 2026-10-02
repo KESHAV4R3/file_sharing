@@ -19,7 +19,15 @@ function determineFileType(fileName: string, mimeType: string): FileType | null 
   if (lowerName.endsWith('.html') || lowerName.endsWith('.htm') || mimeType === 'text/html') {
     return 'html';
   }
-  if (lowerName.endsWith('.csv') || mimeType === 'text/csv' || mimeType === 'application/vnd.ms-excel') {
+  if (
+    lowerName.endsWith('.xlsx') ||
+    lowerName.endsWith('.xls') ||
+    mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    (mimeType === 'application/vnd.ms-excel' && !lowerName.endsWith('.csv'))
+  ) {
+    return 'excel';
+  }
+  if (lowerName.endsWith('.csv') || mimeType === 'text/csv') {
     return 'csv';
   }
   if (
@@ -71,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (!fileType) {
       return NextResponse.json(
         {
-          error: 'Unsupported file type. Allowed formats: PDF, TXT, HTML, CSV, Images, Audio, and Video files.',
+          error: 'Unsupported file type. Allowed formats: PDF, TXT, HTML, CSV, Excel (.xlsx, .xls), Images, Audio, and Video files.',
         },
         { status: 400 }
       );

@@ -10,6 +10,7 @@ const MIME_MAP: Record<string, string> = {
   txt:   'text/plain; charset=utf-8',
   html:  'text/html; charset=utf-8',
   csv:   'text/csv; charset=utf-8',
+  excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   image: 'image/jpeg',
   video: 'video/mp4',
   audio: 'audio/mpeg',
@@ -117,11 +118,14 @@ export async function GET(
 
     const originalName: string = (file as any).originalName ?? 'file';
 
+    const isDownload = request.nextUrl.searchParams.get('download') === '1';
+    const dispositionType = isDownload ? 'attachment' : 'inline';
+
     return new NextResponse(body, {
       status: 200,
       headers: {
         'Content-Type':        contentType,
-        'Content-Disposition': `inline; filename="${encodeURIComponent(originalName)}"`,
+        'Content-Disposition': `${dispositionType}; filename="${encodeURIComponent(originalName)}"; filename*=UTF-8''${encodeURIComponent(originalName)}`,
         'Cache-Control':       'private, max-age=300',
       },
     });

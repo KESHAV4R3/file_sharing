@@ -31,13 +31,17 @@ import {
   AlertTriangle,
   CheckCircle2,
   ExternalLink,
+  Download,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import * as XLSX from 'xlsx';
+import ExcelSpreadsheetViewer from './ExcelSpreadsheetViewer';
+import { downloadFile } from '@/lib/downloadHelper';
 
 export interface DocFile {
   id: string;
   originalName: string;
-  fileType: 'txt' | 'html' | 'pdf' | 'image' | 'csv' | 'video' | 'audio';
+  fileType: 'txt' | 'html' | 'pdf' | 'image' | 'csv' | 'video' | 'audio' | 'excel';
   fileSize?: number;
   cloudinaryUrl: string;
   uploadedAt: string;
@@ -614,6 +618,24 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
   const [contentError, setContentError] = useState<string | null>(null);
   const [resolvedFileSize, setResolvedFileSize] = useState<number | undefined>(file?.fileSize);
 
+  // Loaded content states for Excel
+  const [excelSheets, setExcelSheets] = useState<Record<string, string[][]>>({});
+  const [excelSheetNames, setExcelSheetNames] = useState<string[]>([]);
+  const [selectedExcelSheet, setSelectedExcelSheet] = useState<string>('');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!file) return;
+    try {
+      setIsDownloading(true);
+      await downloadFile(file, fetchWithAuth);
+    } catch (err) {
+      console.error('Download error:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // PDF blob URL – fetched via authenticated request so the iframe never
   // needs to send Authorization headers (which browsers block for iframes).
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
@@ -725,41 +747,98 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file?.id]);
 
-  // Fetch text/csv content if needed
+  // Fetch text/csv/excel content if needed
   useEffect(() => {
     if (!file) return;
 
-    if (file.fileType === 'txt' || file.fileType === 'csv' || file.fileType === 'html') {
+    if (file.fileType === 'excel') {
       setLoadingContent(true);
       setContentError(null);
 
-      fetch(file.cloudinaryUrl)
-        .then(async (res) => {
-          if (!res.ok) {
-            throw new Error(`Failed to load file content (${res.status})`);
-          }
-          const len = res.headers.get('content-length');
-          if (len) {
-            const parsed = parseInt(len, 10);
-            if (!isNaN(parsed) && parsed > 0) {
-              setResolvedFileSize((prev) => prev || parsed);
-            }
-          }
-          return res.text();
+      const loadExcel = async () => {
+        let res: Response | null = null;
+        try {
+          res = await fetchWithAuth(`/api/files/${file.id}/raw`);
+        } catch {
+          // ignore
+        }
+        if (!res || !res.ok) {
+          res = await fetch(file.cloudinaryUrl);
+        }
+        if (!res.ok) {
+          throw new Error(`Failed to load Excel file (${res.status})`);
+        }
+
+        const arrayBuffer = await res.arrayBuffer();
+        setResolvedFileSize((prev) => prev || arrayBuffer.byteLength);
+
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetNames = workbook.SheetNames || [];
+        const sheetsMap: Record<string, string[][]> = {};
+        for (const name of sheetNames) {
+          const sheet = workbook.Sheets[name];
+          if (!sheet) continue;
+          const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' });
+          sheetsMap[name] = rows.map((row) =>
+            Array.isArray(row)
+              ? row.map((cell) => (cell !== null && cell !== undefined ? String(cell) : ''))
+              : []
+          );
+        }
+        setExcelSheetNames(sheetNames);
+        setExcelSheets(sheetsMap);
+        setSelectedExcelSheet(sheetNames[0] || '');
+      };
+
+      loadExcel()
+        .catch((err) => {
+          console.error('Error fetching/parsing Excel file:', err);
+          setContentError(err?.message || 'Could not display Excel spreadsheet.');
         })
-        .then((text) => {
-          if (file.fileType === 'txt') {
-            setTextContent(text);
-          } else if (file.fileType === 'csv') {
-            const parsed = Papa.parse<string[]>(text, {
-              skipEmptyLines: true,
-            });
-            setCsvData(parsed.data || []);
-          } else if (file.fileType === 'html') {
-            setTextContent(text);
+        .finally(() => {
+          setLoadingContent(false);
+        });
+    } else if (file.fileType === 'txt' || file.fileType === 'csv' || file.fileType === 'html') {
+      setLoadingContent(true);
+      setContentError(null);
+
+      const loadTextContent = async () => {
+        let res: Response | null = null;
+        try {
+          res = await fetchWithAuth(`/api/files/${file.id}/raw`);
+        } catch {
+          // ignore
+        }
+        if (!res || !res.ok) {
+          res = await fetch(file.cloudinaryUrl);
+        }
+        if (!res.ok) {
+          throw new Error(`Failed to load file content (${res.status})`);
+        }
+
+        const len = res.headers.get('content-length');
+        if (len) {
+          const parsed = parseInt(len, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            setResolvedFileSize((prev) => prev || parsed);
           }
-          setResolvedFileSize((prev) => prev || new Blob([text]).size);
-        })
+        }
+
+        const text = await res.text();
+        if (file.fileType === 'txt') {
+          setTextContent(text);
+        } else if (file.fileType === 'csv') {
+          const parsed = Papa.parse<string[]>(text, {
+            skipEmptyLines: true,
+          });
+          setCsvData(parsed.data || []);
+        } else if (file.fileType === 'html') {
+          setTextContent(text);
+        }
+        setResolvedFileSize((prev) => prev || new Blob([text]).size);
+      };
+
+      loadTextContent()
         .catch((err) => {
           console.error('Error fetching file content:', err);
           setContentError(err?.message || 'Could not display inline content.');
@@ -798,7 +877,7 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
     setFontSize(16);
   };
 
-  const isTextFormat = ['txt', 'csv', 'html'].includes(file.fileType);
+  const isTextFormat = ['txt', 'csv', 'html', 'excel'].includes(file.fileType);
   const isMediaFormat = file.fileType === 'video' || file.fileType === 'audio';
 
   const getFileBadge = (type: string) => {
@@ -837,6 +916,12 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
             <FileSpreadsheet className="w-3.5 h-3.5" /> CSV
+          </span>
+        );
+      case 'excel':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
           </span>
         );
       case 'html':
@@ -1034,6 +1119,26 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
               {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             </button>
 
+            {/* Download Document Button */}
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              title="Download file"
+              className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition-all shrink-0 flex items-center gap-1.5 ${
+                readerTheme === 'dark'
+                  ? 'bg-slate-950/80 border-slate-800 hover:border-emerald-500/50 text-emerald-400 hover:text-emerald-300'
+                  : 'bg-white border-slate-200 hover:border-emerald-300 text-emerald-600 shadow-sm'
+              } disabled:opacity-50`}
+            >
+              {isDownloading ? (
+                <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              )}
+              <span className="text-xs font-semibold hidden md:inline">Download</span>
+            </button>
+
             {/* Open Raw / Full View in New Tab */}
             <a
               href={pdfBlobUrl || file.cloudinaryUrl}
@@ -1209,6 +1314,22 @@ export default function DocViewerModal({ file, onClose, onDeleted }: DocViewerMo
                       </table>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* EXCEL SPREADSHEET VIEWER */}
+              {file.fileType === 'excel' && (
+                <div className="w-full h-full flex-1 flex flex-col overflow-hidden">
+                  <ExcelSpreadsheetViewer
+                    sheets={excelSheets}
+                    sheetNames={excelSheetNames}
+                    activeSheet={selectedExcelSheet}
+                    onSelectSheet={(name) => setSelectedExcelSheet(name)}
+                    fontSize={fontSize}
+                    readerTheme={readerTheme}
+                    originalName={file.originalName}
+                    onDownload={handleDownload}
+                  />
                 </div>
               )}
 

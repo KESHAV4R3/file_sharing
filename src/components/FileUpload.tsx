@@ -12,6 +12,7 @@ import {
   Video,
   Music,
   FileImage,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface FileUploadProps {
@@ -24,6 +25,8 @@ const DOC_EXTENSIONS = [
   '.htm',
   '.pdf',
   '.csv',
+  '.xlsx',
+  '.xls',
   '.jpg',
   '.jpeg',
   '.png',
@@ -86,8 +89,8 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
     if (!isDocFile && !isMediaFile) {
       setError(
         canUploadVideo
-          ? 'Invalid file type. Supported formats: Documents (PDF, TXT, HTML, CSV), Images, Video, and Audio.'
-          : 'Invalid file type. Supported formats: PDF, TXT, HTML, CSV, and Images.'
+          ? 'Invalid file type. Supported formats: Documents (PDF, TXT, HTML, CSV, Excel), Images, Video, and Audio.'
+          : 'Invalid file type. Supported formats: PDF, TXT, HTML, CSV, Excel (.xlsx, .xls), and Images.'
       );
       setSelectedFile(null);
       return;
@@ -261,8 +264,8 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
             onChange={handleFileChange}
             accept={
               canUploadVideo
-                ? '.txt,.html,.htm,.pdf,.csv,image/*,video/*,audio/*'
-                : '.txt,.html,.htm,.pdf,.csv,image/*'
+                ? '.txt,.html,.htm,.pdf,.csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,image/*,video/*,audio/*'
+                : '.txt,.html,.htm,.pdf,.csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,image/*'
             }
             className="hidden"
           />
@@ -276,8 +279,8 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
             </p>
             <p className="text-[11px] sm:text-xs text-slate-500 max-w-sm">
               {canUploadVideo
-                ? 'Supports Documents, Images, Audio, and Video (up to 100MB)'
-                : 'Supports .pdf, .txt, .csv, .html, and images (up to 25MB).'}
+                ? 'Supports Documents (PDF, TXT, HTML, CSV, Excel), Images, Audio, and Video (up to 100MB)'
+                : 'Supports .pdf, .txt, .csv, .xlsx, .xls, .html, and images (up to 25MB).'}
             </p>
           </div>
         </div>
@@ -293,6 +296,8 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
                   <Music className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                 ) : selectedFile.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(selectedFile.name) ? (
                   <FileImage className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                ) : /\.(xlsx|xls)$/i.test(selectedFile.name) ? (
+                  <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                 ) : (
                   <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
                 )}

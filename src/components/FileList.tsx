@@ -20,7 +20,9 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
+import { downloadFile } from '@/lib/downloadHelper';
 
 interface FileListProps {
   onSelectFile: (file: DocFile) => void;
@@ -45,6 +47,7 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
     limit: 8,
   });
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Deletion states
@@ -155,6 +158,8 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
         return <FileText className="w-5 h-5 text-blue-400" />;
       case 'csv':
         return <FileSpreadsheet className="w-5 h-5 text-amber-400" />;
+      case 'excel':
+        return <FileSpreadsheet className="w-5 h-5 text-emerald-400" />;
       case 'html':
         return <FileCode className="w-5 h-5 text-purple-400" />;
       default:
@@ -176,6 +181,8 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
         return <span className="text-[11px] font-semibold text-blue-400 uppercase">TXT</span>;
       case 'csv':
         return <span className="text-[11px] font-semibold text-amber-400 uppercase">CSV</span>;
+      case 'excel':
+        return <span className="text-[11px] font-semibold text-emerald-400 uppercase">Excel</span>;
       case 'html':
         return <span className="text-[11px] font-semibold text-purple-400 uppercase">HTML</span>;
       default:
@@ -319,6 +326,31 @@ export default function FileList({ onSelectFile, onGoToUpload, refreshTrigger }:
                       <Eye className="w-3.5 h-3.5" />
                     )}
                     <span>{file.fileType === 'video' || file.fileType === 'audio' ? 'Play' : 'View / Read'}</span>
+                  </button>
+
+                  {/* Download Button */}
+                  <button
+                    type="button"
+                    title="Download document"
+                    disabled={downloadingId === file.id}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        setDownloadingId(file.id);
+                        await downloadFile(file, fetchWithAuth);
+                      } catch (err) {
+                        console.error('Download error:', err);
+                      } finally {
+                        setDownloadingId(null);
+                      }
+                    }}
+                    className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 border border-slate-700/60 hover:border-emerald-500/30 transition-all flex items-center justify-center disabled:opacity-50"
+                  >
+                    {downloadingId === file.id ? (
+                      <div className="w-3.5 h-3.5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
                   </button>
 
                   {/* Delete Button */}

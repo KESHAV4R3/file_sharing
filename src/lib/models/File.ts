@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export type FileType = 'txt' | 'html' | 'pdf' | 'image' | 'csv' | 'video' | 'audio';
+export type FileType = 'txt' | 'html' | 'pdf' | 'image' | 'csv' | 'video' | 'audio' | 'excel';
 
 export interface IFile extends Document {
   _id: mongoose.Types.ObjectId;
@@ -30,7 +30,7 @@ const FileSchema = new Schema<IFile>(
     fileType: {
       type: String,
       required: [true, 'File type is required'],
-      enum: ['txt', 'html', 'pdf', 'image', 'csv', 'video', 'audio'],
+      enum: ['txt', 'html', 'pdf', 'image', 'csv', 'video', 'audio', 'excel'],
     },
     fileSize: {
       type: Number,

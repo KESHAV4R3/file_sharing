@@ -22,8 +22,9 @@ function FileTypeIcon({ type }: { type: string }) {
   if (type === 'audio') return <Music className={`${cls} text-cyan-400`} />;
   if (type === 'pdf')   return <FileIcon className={`${cls} text-red-400`} />;
   if (type === 'image') return <FileImage className={`${cls} text-blue-400`} />;
-  if (type === 'csv')   return <FileSpreadsheet className={`${cls} text-emerald-400`} />;
-  if (type === 'html')  return <FileCode className={`${cls} text-amber-400`} />;
+  if (type === 'csv')   return <FileSpreadsheet className={`${cls} text-amber-400`} />;
+  if (type === 'excel') return <FileSpreadsheet className={`${cls} text-emerald-400`} />;
+  if (type === 'html')  return <FileCode className={`${cls} text-purple-400`} />;
   return <FileText className={`${cls} text-slate-400`} />;
 }
 
